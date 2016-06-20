@@ -15,36 +15,48 @@
 #include <string>
 #include <cassert>
 #include <unistd.h>
+#include <memory>
+#include <stdexcept>
+#include "Node.h"
+#include "ScifNode.h"
+
+//enum the version
+
+Node *build_node(std::string, int node_id, int port, std::size_t total_data_size);
+//void benchmark(Node *n, std::size_t total_data_size, std::size_t chunk_size);
 
 int main(int argc, char **argv) {
-  std::string options("t:a:s:c:v");
-  std::string address;
+  std::string options("t:n:p:s:c:v");
+  int node_id = -1;
+  int port = -1;
   std::size_t chunk_size = 0;
-  int count = -1;
+  std::size_t total_data_size = 0;
+  std::string trans_type("");
+  int c;
 
   opterr = 0;
-  char c;
-  while ((c = getopt(argc, argv, options.c_str())) != -1)
-    if (c == 'a')
-      address = optarg;
-  opterr = 0;
-  optind = 1;
   while ((c = getopt(argc, argv, options.c_str())) != -1) {
     switch (c) {
       case 't':
-        std::cout << optarg << std::endl;
+        trans_type = optarg;
         break;
-      case 'a':
-        //was handled in the beginning
+      case 'n':
+        node_id = std::stoi(optarg);
+        break;
+      case 'p':
+        port = std::stoi(optarg);
         break;
       case 's': {
         int sz = std::stoi(optarg);
         assert(sz > 0);
-        chunk_size = static_cast<std::size_t> (sz);
+        total_data_size = static_cast<std::size_t> (sz);
       }
         break;
-      case 'c':
-        count = std::stoi(optarg);
+      case 'c': {
+        int sz = std::stoi(optarg);
+        assert(sz > 0);
+        chunk_size = static_cast<std::size_t> (sz);
+      }
         break;
       case 'v':
         std::cout << "version" << std::endl;
@@ -54,10 +66,23 @@ int main(int argc, char **argv) {
         return -1;
     }
   }
+  assert (port > 0);
   assert (chunk_size > 0);
-  assert (count > 0);
-  std::cout << address << std::endl;
-  std::cout << chunk_size << std::endl;
-  std::cout << count << std::endl;
+  assert (total_data_size > 0);
+  assert (trans_type != "");
+
+  std::unique_ptr<Node> n(build_node(trans_type, node_id, port, total_data_size));
   return 0;
 }
+
+Node *build_node(std::string trans_type, int node_id, int port, std::size_t total_data_size) {
+  if (trans_type == "scif") {
+    return (node_id == -1) ? new ScifNode(port, total_data_size) : new ScifNode(node_id, port, total_data_size);
+  } else {
+    throw std::invalid_argument("Unsupported transport type: "+trans_type);
+  }
+}
+
+//void benchmark(Node *n, std::size_t total_data_size, std::size_t chunk_size) {
+  //
+//}

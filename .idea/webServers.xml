@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="ff1cc4a9-9753-4f61-ad37-3637aba5d60e" name="cernafs" url="http://localhost">
+        <fileTransfer port="0" mountedRoot="Z:\codein\trans-perf-test" accessType="MOUNT" />
+      </webServer>
+    </option>
+  </component>
+</project>
