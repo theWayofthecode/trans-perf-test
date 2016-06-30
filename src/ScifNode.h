@@ -17,23 +17,20 @@
 #include <scif.h>
 #include <memory>
 #include "Node.h"
+#include "scifepd.h"
 
 class ScifNode : public Node {
  private:
 
-  std::unique_ptr<uint8_t[]> data;
-  uint8_t *d_idx;
-  uint8_t *d_end;
-  scif_epd_t epd;
+  std::unique_ptr<uint8_t[]> data_;
+  uint8_t *d_idx_;
+  uint8_t *d_end_;
+  ScifEpd epd_;
 
  public:
 
   ScifNode(int node_id, int port, std::size_t total_data_size);
   ScifNode(int port, std::size_t total_data_size);
-
-  ~ScifNode() override {
-    scif_close(epd);
-  }
 
   int send(std::size_t sz) override;
   int recv(std::size_t sz) override;

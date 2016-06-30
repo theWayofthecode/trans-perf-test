@@ -14,21 +14,35 @@
 #include <iostream>
 #include <string>
 #include <cassert>
+#include <chrono>
+#include <ctime>
 #include <unistd.h>
 #include <memory>
+#include <thread>
 #include <stdexcept>
+#include <system_error>
+#include <errno.h>
 #include "Node.h"
 #include "ScifNode.h"
 
 //enum the version
+using hrclock = std::chrono::high_resolution_clock;
+using std::placeholders::_1;
+
+template<typename DurationType>
+inline std::chrono::microseconds cast_microseconds(DurationType d) {
+  return std::chrono::duration_cast<std::chrono::microseconds>(d);
+}
 
 Node *build_node(std::string, int node_id, int port, std::size_t total_data_size);
-//void benchmark(Node *n, std::size_t total_data_size, std::size_t chunk_size);
+void trans_perf(std::function<int(std::size_t)> transmission, int num_transfers, std::size_t chunk_size);
+
 
 int main(int argc, char **argv) {
-  std::string options("t:n:p:s:c:v");
+  std::string options("t:n:p:s:c:u:v");
   int node_id = -1;
   int port = -1;
+  int num_transfers = 0;
   std::size_t chunk_size = 0;
   std::size_t total_data_size = 0;
   std::string trans_type("");
@@ -58,6 +72,9 @@ int main(int argc, char **argv) {
         chunk_size = static_cast<std::size_t> (sz);
       }
         break;
+      case 'u':
+        num_transfers = std::stoi(optarg);
+        break;
       case 'v':
         std::cout << "version" << std::endl;
         break;
@@ -69,9 +86,29 @@ int main(int argc, char **argv) {
   assert (port > 0);
   assert (chunk_size > 0);
   assert (total_data_size > 0);
+  assert (num_transfers > 0);
   assert (trans_type != "");
 
-  std::unique_ptr<Node> n(build_node(trans_type, node_id, port, total_data_size));
+  std::unique_ptr<Node> n;
+  for (int i = 0; ; ++i) {
+    try {
+      //if we are building a connecting node, it may fail because the listening node is not ready yet
+      //therefore we try for some to time to reconnect
+      n.reset(build_node(trans_type, node_id, port, total_data_size));
+      break;
+    } catch (std::system_error se) {
+      if (se.code().value() != ECONNREFUSED || i == 2000)
+        throw;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+
+  if (node_id == -1) { //receiver side
+    trans_perf([&n](std::size_t cz) { return n->recv(cz); }, num_transfers, chunk_size);
+  } else { //sender side
+    trans_perf([&n](std::size_t cz) { return n->send(cz); }, num_transfers, chunk_size);
+  }
+
   return 0;
 }
 
@@ -79,10 +116,15 @@ Node *build_node(std::string trans_type, int node_id, int port, std::size_t tota
   if (trans_type == "scif") {
     return (node_id == -1) ? new ScifNode(port, total_data_size) : new ScifNode(node_id, port, total_data_size);
   } else {
-    throw std::invalid_argument("Unsupported transport type: "+trans_type);
+    throw std::invalid_argument("Unsupported transport type: " + trans_type);
   }
 }
 
-//void benchmark(Node *n, std::size_t total_data_size, std::size_t chunk_size) {
-  //
-//}
+void trans_perf(std::function<int(std::size_t)> transmission, int num_transfers, std::size_t chunk_size) {
+  for (int i = 0; i < num_transfers; ++i) {
+    auto start = hrclock::now();
+    transmission(chunk_size);
+    auto end = hrclock::now();
+    std::cout << cast_microseconds(end - start).count() << " ";
+  }
+}

@@ -12,6 +12,9 @@ target_link_libraries(tpt_mic scif)
 set_target_properties(tpt_mic PROPERTIES
         COMPILE_FLAGS "-std=c++11 -mmic" LINK_FLAGS "-mmic")
 
+#INSTALL
+install(TARGETS tpt tpt_mic DESTINATION bin)
+
 #add_executable(runner nonius_test.cpp)
 
 #target_link_libraries(runner pthread)
