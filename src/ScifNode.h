@@ -21,7 +21,7 @@
 
 class ScifNode : public Node {
  private:
-
+  //The data_ can be transmitted multiple times
   std::unique_ptr<uint8_t[]> data_;
   uint8_t *d_idx_;
   uint8_t *d_end_;
@@ -34,6 +34,7 @@ class ScifNode : public Node {
 
   int send(std::size_t sz) override;
   int recv(std::size_t sz) override;
+  bool verify_transmission_data() override;
 };
 
 

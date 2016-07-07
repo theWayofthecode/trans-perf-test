@@ -18,4 +18,7 @@
 #define INT_TO_STR(i) INT_TO_STR_(i)
 #define __FILE__LINE__ (__FILE__ + std::string(":") + INT_TO_STR(__LINE__))
 
+// Used to fill the transmission data arrays
+constexpr uint8_t fill_value = 0xAB;
+
 #endif //TRANS_PERF_TEST_COMMON_H

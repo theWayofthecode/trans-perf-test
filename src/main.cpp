@@ -25,7 +25,11 @@
 #include "Node.h"
 #include "ScifNode.h"
 
-//enum the version
+enum Version {
+  major = 0,
+  minor = 1
+};
+
 using hrclock = std::chrono::high_resolution_clock;
 using std::placeholders::_1;
 
@@ -76,8 +80,8 @@ int main(int argc, char **argv) {
         num_transfers = std::stoi(optarg);
         break;
       case 'v':
-        std::cout << "version" << std::endl;
-        break;
+        std::cout << Version::major << "." << Version::minor << std::endl;
+        return 0;
       default:
         std::cerr << "Unrecognized option -" << c << std::endl;
         return -1;
@@ -93,14 +97,14 @@ int main(int argc, char **argv) {
   for (int i = 0; ; ++i) {
     try {
       //if we are building a connecting node, it may fail because the listening node is not ready yet
-      //therefore we try for some to time to reconnect
+      //therefore we try for some time to reconnect
       n.reset(build_node(trans_type, node_id, port, total_data_size));
       break;
     } catch (std::system_error se) {
-      if (se.code().value() != ECONNREFUSED || i == 2000)
+      if (se.code().value() != ECONNREFUSED || i == 1000)
         throw;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   if (node_id == -1) { //receiver side
@@ -108,7 +112,7 @@ int main(int argc, char **argv) {
   } else { //sender side
     trans_perf([&n](std::size_t cz) { return n->send(cz); }, num_transfers, chunk_size);
   }
-
+  assert(n->verify_transmission_data());
   return 0;
 }
 
