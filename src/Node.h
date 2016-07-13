@@ -20,6 +20,7 @@ class Node {
   virtual int send(std::size_t sz) = 0;
   virtual int recv(std::size_t sz) = 0;
   virtual bool verify_transmission_data() = 0;
+  virtual void barrier() = 0;
 };
 
 #endif //TRANS_PERF_TEST_NODE_H

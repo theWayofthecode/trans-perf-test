@@ -4,17 +4,14 @@ import pandas as pd
 from calendar import datetime as dt
 import os
 import re
+import random
+import logging
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument('--total-size', type=string,  help='The total data size')
 # parser.add_argument('--chunk-size', type=string,  help='The total data size is devided to chunks of sizes defined by this argument')
 # args = parser.parse_args()
 # print(args.total_size)
-
-PROCESS_TIMEOUT = 20 #in seconds
-PORT = '5665'
-CHUNK_SIZES = [128, 256]
-NUM_TRANSFERS = 8
 
 
 #print run sequence number
@@ -33,11 +30,11 @@ def run_trans_perf_test(mic_cmd, host_cmd):
     with subprocess.Popen(host_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True) as p_host,\
             subprocess.Popen(mic_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True) as p_mic:
         try:
-            (p_mic_stdout, p_mic_stderr) = p_mic.communicate(timeout=PROCESS_TIMEOUT);
+            (p_mic_stdout, p_mic_stderr) = p_mic.communicate(timeout=process_timeout);
             if p_mic.returncode != 0:
                 p_host.kill()
                 raise PairProcessAbort(p_mic.returncode, p_mic_stderr, p_host.returncode, p_host.stderr.read())
-            (p_host_stdout, p_host_stderr) = p_host.communicate(timeout=PROCESS_TIMEOUT);
+            (p_host_stdout, p_host_stderr) = p_host.communicate(timeout=process_timeout);
             if p_host.returncode != 0:
                 p_mic.kill()
                 raise PairProcessAbort(p_mic.returncode, p_mic_stderr, p_host.returncode, p_host_stderr)
@@ -45,6 +42,7 @@ def run_trans_perf_test(mic_cmd, host_cmd):
             host_data = list(map(int, p_host_stdout.split()))
             return mic_data, host_data
         except subprocess.TimeoutExpired as te:
+            logging.exception('Timeout')
             p_mic.kill()
             p_host.kill()
             raise PairProcessAbort(p_mic.returncode, p_mic.stderr.read(), p_host.returncode, p_host.stderr.read())
@@ -53,41 +51,65 @@ def get_timestamp():
     today = str(dt.datetime.today())
     return "TS_"+re.sub('[: .-]', '_', today)
 
-if __name__ == "__main__":
-    # Pandas options
+def init_modules():
+    logging.basicConfig(format='\n%(levelname)s[%(asctime)s]: %(message)s',
+                        level=logging.DEBUG,
+                        filename='trans_perf_test.log')
     pd.set_option('display.max_colwidth', -1)
+    random.seed()
+
+## MAIN ##
+if __name__ == "__main__":
+    init_modules()
+
+    #Init parameters
+    trans_proto = "scif"
+    process_timeout = 120 #in seconds
+    chunk_sizes = list(map(lambda x: 2**x, range(6, 16)))
+    num_of_transfers = 10000
+    total_size_limit = 2**30
+
     #Sender
-    sender_df = pd.DataFrame(index=range(0, NUM_TRANSFERS))
+    sender_df = pd.DataFrame(index=range(0, num_of_transfers))
     sender_cmd = pd.Series("Command")
     sender_err = pd.DataFrame(index=["return_code", "stderr"])
 
     #Receiver
-    receiver_df = pd.DataFrame(index=range(0, NUM_TRANSFERS))
+    receiver_df = pd.DataFrame(index=range(0, num_of_transfers))
     receiver_cmd = pd.Series("Command")
     receiver_err = pd.DataFrame(index=["return_code", "stderr"])
 
-    trans_proto = "scif"
+    logging.info(' ======= experiment parameters ======= \n'+\
+                 'trans_proto = %s\n'+\
+                 'cnunk_sizes = %s\n'+\
+                 'num_of_transfers = %d\n'+ \
+                 'total_size_limit = %d\n'+ \
+                 'process_timeout = %d\n',\
+                 trans_proto, str(chunk_sizes), num_of_transfers, total_size_limit, process_timeout)
 
-    for chunk_size in CHUNK_SIZES:
-        total_size = chunk_size*NUM_TRANSFERS
-        if total_size > 2**9:
-            total_size = 2**9
+    for chunk_size in chunk_sizes:
+        total_size = chunk_size * num_of_transfers
+        port = random.randint(2000, 6000)
+
+        if total_size > total_size_limit:
+            total_size = total_size_limit
+
         # Cook the commands
         host_cmd = ["./tpt", \
                     "-t", trans_proto, \
-                    "-p", PORT, \
+                    "-p", str(port), \
                     "-s", str(total_size), \
                     "-c", str(chunk_size), \
-                    "-u", str(NUM_TRANSFERS)]
+                    "-u", str(num_of_transfers)]
 
         mic_cmd = ["micnativeloadex", "tpt_mic", \
                    "-a", \
-                   " -t "+trans_proto+ \
-                   " -n 0"+ \
-                   " -p " + PORT + \
+                   " -t " + trans_proto + \
+                   " -n 0" + \
+                   " -p " + str(port) + \
                    " -s " + str(total_size) + \
                    " -c " + str(chunk_size) + \
-                   " -u " + str(NUM_TRANSFERS)]
+                   " -u " + str(num_of_transfers)]
 
         sender_cmd[chunk_size] = str(mic_cmd)
         receiver_cmd[chunk_size] = str(host_cmd)
@@ -95,8 +117,9 @@ if __name__ == "__main__":
         # RUN
         try:
             mic_data, host_data = run_trans_perf_test(mic_cmd, host_cmd)
+            logging.info('Success[%d]', chunk_size)
         except PairProcessAbort as e:
-            print(e)
+            logging.exception('PairProcessAbort: %s :: %s', sender_cmd[chunk_size], receiver_cmd[chunk_size])
             sender_err[chunk_size] = [e.sender_returncode, e.sender_stderr]
             receiver_err[chunk_size] = [e.receiver_returncode, e.receiver_stderr]
         else:
@@ -110,7 +133,7 @@ if __name__ == "__main__":
                     +trans_proto+"/" \
                     +get_timestamp()+"/"
 
-    with pd.HDFStore('trans_perf_test.h5') as store:
+    with pd.HDFStore('../../data/trans_perf_test.h5') as store:
         #Sender
         store[hdfstore_root+'sender'] = sender_df
         store.get_storer(hdfstore_root+'sender').attrs.cmds = sender_cmd

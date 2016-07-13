@@ -1,1 +1,1 @@
-install(FILES run_trans_perf_test.py DESTINATION bin)
+install(FILES h5file.py trans_perf_test.py build_run_monitor.sh DESTINATION bin)

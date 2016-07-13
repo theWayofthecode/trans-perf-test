@@ -16,6 +16,7 @@
 
 #include <scif.h>
 #include <memory>
+#include <algorithm>
 #include "Node.h"
 #include "scifepd.h"
 
@@ -26,15 +27,26 @@ class ScifNode : public Node {
   uint8_t *d_idx_;
   uint8_t *d_end_;
   ScifEpd epd_;
+  int transmission(int(*trans_prim)(scif_epd_t, void*, int, int), std::size_t sz );
 
  public:
 
   ScifNode(int node_id, int port, std::size_t total_data_size);
   ScifNode(int port, std::size_t total_data_size);
 
-  int send(std::size_t sz) override;
-  int recv(std::size_t sz) override;
-  bool verify_transmission_data() override;
+  void barrier() override;
+
+  int send(std::size_t sz) override {
+    return transmission(scif_send, sz);
+  }
+
+  int recv(std::size_t sz) override {
+    return transmission(scif_recv, sz);
+  }
+
+  bool verify_transmission_data() override {
+    return std::all_of(data_.get(), d_end_, [](uint8_t v){return v == fill_value;});
+  }
 };
 
 

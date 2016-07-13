@@ -13,7 +13,6 @@
 
 #include <system_error>
 #include <cassert>
-#include <algorithm>
 #include "ScifNode.h"
 #include "common.h"
 
@@ -55,46 +54,29 @@ ScifNode::ScifNode(int port, std::size_t total_data_size) {
   d_end_ = d_idx_ + total_data_size;
 }
 
-int ScifNode::send(std::size_t sz) {
-  std::size_t total_to_send = sz;
-  std::size_t to_send = std::min(total_to_send, static_cast<std::size_t>(d_end_ - d_idx_));
-  int rc = scif_send(epd_.get(), d_idx_, to_send, SCIF_SEND_BLOCK);
-  if (rc == -1)
-    throw std::system_error(errno, std::system_category(), __FILE__LINE__);
-  d_idx_ += rc;
-  total_to_send -= rc;
-  if (d_idx_ == d_end_) {
-    d_idx_ = data_.get();
-    int rc = scif_send(epd_.get(), d_idx_, total_to_send, SCIF_SEND_BLOCK);
+int ScifNode::transmission(int(*trans_prim)(scif_epd_t, void*, int, int), std::size_t sz ) {
+  std::size_t total_trans_size = sz;
+  while (total_trans_size) {
+    std::size_t to_trans = std::min(total_trans_size, static_cast<std::size_t>(d_end_ - d_idx_));
+    int rc = trans_prim(epd_.get(), d_idx_, to_trans, 0);
     if (rc == -1)
       throw std::system_error(errno, std::system_category(), __FILE__LINE__);
     d_idx_ += rc;
-    total_to_send -= rc;
+    if (d_idx_ == d_end_)
+      d_idx_ = data_.get();
+    total_trans_size -= rc;
   }
-  assert(total_to_send == 0);
-  return sz - total_to_send;
+  return sz - total_trans_size;
 }
 
-int ScifNode::recv(std::size_t sz) {
-  std::size_t total_to_recv = sz;
-  std::size_t to_recv = std::min(total_to_recv, static_cast<std::size_t>(d_end_ - d_idx_));
-  int rc = scif_recv(epd_.get(), d_idx_, total_to_recv, SCIF_RECV_BLOCK);
+void ScifNode::barrier() {
+  char s = 'x';
+  int rc = scif_send(epd_.get(), &s, 1, SCIF_SEND_BLOCK);
   if (rc == -1)
     throw std::system_error(errno, std::system_category(), __FILE__LINE__);
-  d_idx_ += rc;
-  total_to_recv -= rc;
-  if (d_idx_ == d_end_) {
-    d_idx_ = data_.get();
-    int rc = scif_recv(epd_.get(), d_idx_, total_to_recv, SCIF_SEND_BLOCK);
-    if (rc == -1)
-      throw std::system_error(errno, std::system_category(), __FILE__LINE__);
-    d_idx_ += rc;
-    total_to_recv -= rc;
-  }
-  assert(total_to_recv == 0);
-  return sz - total_to_recv;
-}
-
-bool ScifNode::verify_transmission_data() {
-  return std::all_of(data_.get(), d_end_, [](uint8_t v){return v == fill_value;});
+  char r = 0;
+  rc = scif_recv(epd_.get(), &r, 1, SCIF_RECV_BLOCK);
+  if (rc == -1)
+    throw std::system_error(errno, std::system_category(), __FILE__LINE__);
+  assert(r == 'x');
 }

@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
   }
   assert (port > 0);
   assert (chunk_size > 0);
-  assert (total_data_size > 0);
+  assert (total_data_size >= chunk_size);
   assert (num_transfers > 0);
   assert (trans_type != "");
 
@@ -107,6 +107,7 @@ int main(int argc, char **argv) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
+  n->barrier(); //we make sure the peers wait for each other
   if (node_id == -1) { //receiver side
     trans_perf([&n](std::size_t cz) { return n->recv(cz); }, num_transfers, chunk_size);
   } else { //sender side
