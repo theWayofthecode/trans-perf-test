@@ -2,18 +2,17 @@ set(SOURCE_FILES
         main.cpp
         ScifNode.cpp)
 
+set(LIBS scif trans4scif pthread)
+
+include_directories("/usr/local/include")
+
 add_executable(tpt ${SOURCE_FILES})
-target_link_libraries(tpt scif)
+target_link_libraries(tpt ${LIBS})
 set_target_properties(tpt PROPERTIES
         COMPILE_FLAGS "-std=c++11")
 
-add_executable(tpt_mic ${SOURCE_FILES})
-target_link_libraries(tpt_mic scif)
-set_target_properties(tpt_mic PROPERTIES
-        COMPILE_FLAGS "-std=c++11 -mmic" LINK_FLAGS "-mmic")
-
 #INSTALL
-install(TARGETS tpt tpt_mic DESTINATION bin)
+install(TARGETS tpt DESTINATION ../bin)
 
 #add_executable(runner nonius_test.cpp)
 

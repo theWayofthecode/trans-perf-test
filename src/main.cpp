@@ -22,16 +22,16 @@
 #include <stdexcept>
 #include <system_error>
 #include <errno.h>
+#include <trans4scif.h>
 #include "Node.h"
 #include "ScifNode.h"
 
 enum Version {
   major = 0,
-  minor = 1
+  minor = 2
 };
 
 using hrclock = std::chrono::high_resolution_clock;
-using std::placeholders::_1;
 
 template<typename DurationType>
 inline std::chrono::microseconds cast_microseconds(DurationType d) {

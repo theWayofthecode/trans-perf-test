@@ -95,7 +95,7 @@ if __name__ == "__main__":
             total_size = total_size_limit
 
         # Cook the commands
-        host_cmd = ["./tpt", \
+        host_cmd = ["./tpt_host", \
                     "-t", trans_proto, \
                     "-p", str(port), \
                     "-s", str(total_size), \
@@ -126,30 +126,22 @@ if __name__ == "__main__":
             sender_df[chunk_size] = pd.Series(mic_data, index=sender_df.index)
             receiver_df[chunk_size] = pd.Series(host_data, index=receiver_df.index)
 
-    host_cmd_version = subprocess.check_output(["./tpt", "-v"], universal_newlines=True)
+    host_cmd_version = subprocess.check_output(["./tpt_host", "-v"], universal_newlines=True)
     mic_cmd_version = subprocess.check_output(["micnativeloadex", "tpt_mic", "-a", "-v"], universal_newlines=True)
 
     hdfstore_root = os.uname().nodename+"/" \
                     +trans_proto+"/" \
                     +get_timestamp()+"/"
 
-    with pd.HDFStore('../../data/trans_perf_test.h5') as store:
-        #Sender
-        store[hdfstore_root+'sender'] = sender_df
-        store.get_storer(hdfstore_root+'sender').attrs.cmds = sender_cmd
-        store.get_storer(hdfstore_root+'sender').attrs.errors = sender_err
-        store.get_storer(hdfstore_root+'sender').attrs.version = mic_cmd_version
-        #Receiver
-        store[hdfstore_root+'receiver'] = receiver_df
-        store.get_storer(hdfstore_root+'receiver').attrs.cmds = receiver_cmd
-        store.get_storer(hdfstore_root+'receiver').attrs.errors = receiver_err
-        store.get_storer(hdfstore_root+'receiver').attrs.version = host_cmd_version
-
-        # print("SENDER\n")
-        # print(store['oplaboum2/scif/sender'])
-        # print(store.get_storer('oplaboum2/scif/sender').attrs.cmds)
-        # print(store.get_storer('oplaboum2/scif/sender').attrs.errors)
-        # print("RECEIVER\n")
-        # print(store['oplaboum2/scif/receiver'])
-        # print(store.get_storer('oplaboum2/scif/receiver').attrs.errors)
-        # print(store.get_storer('oplaboum2/scif/receiver').attrs.cmds)
+    if sender_err.empty and receiver_err.empty:
+        with pd.HDFStore('../../data/trans_perf_test.h5') as store:
+            #Sender
+            store[hdfstore_root+'sender'] = sender_df
+            store.get_storer(hdfstore_root+'sender').attrs.cmds = sender_cmd
+            store.get_storer(hdfstore_root+'sender').attrs.errors = sender_err
+            store.get_storer(hdfstore_root+'sender').attrs.version = mic_cmd_version
+            #Receiver
+            store[hdfstore_root+'receiver'] = receiver_df
+            store.get_storer(hdfstore_root+'receiver').attrs.cmds = receiver_cmd
+            store.get_storer(hdfstore_root+'receiver').attrs.errors = receiver_err
+            store.get_storer(hdfstore_root+'receiver').attrs.version = host_cmd_version
