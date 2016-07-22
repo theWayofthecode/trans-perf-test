@@ -63,10 +63,10 @@ if __name__ == "__main__":
     init_modules()
 
     #Init parameters
-    trans_proto = "scif"
+    trans_proto = "trans4scif"
     process_timeout = 120 #in seconds
     chunk_sizes = list(map(lambda x: 2**x, range(6, 16)))
-    num_of_transfers = 10000
+    num_of_transfers = 100
     total_size_limit = 2**30
 
     #Sender

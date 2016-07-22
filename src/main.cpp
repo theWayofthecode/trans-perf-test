@@ -22,9 +22,9 @@
 #include <stdexcept>
 #include <system_error>
 #include <errno.h>
-#include <trans4scif.h>
 #include "Node.h"
 #include "ScifNode.h"
+#include "Trans4ScifNode.h"
 
 enum Version {
   major = 0,
@@ -119,7 +119,13 @@ int main(int argc, char **argv) {
 
 Node *build_node(std::string trans_type, int node_id, int port, std::size_t total_data_size) {
   if (trans_type == "scif") {
-    return (node_id == -1) ? new ScifNode(port, total_data_size) : new ScifNode(node_id, port, total_data_size);
+    return (node_id == -1) ?
+           new ScifNode(port, total_data_size) :
+           new ScifNode(node_id, port, total_data_size);
+  } else if (trans_type == "trans4scif") {
+    return (node_id == -1) ?
+           new Trans4ScifNode(port, total_data_size) :
+           new Trans4ScifNode(node_id, port, total_data_size);
   } else {
     throw std::invalid_argument("Unsupported transport type: " + trans_type);
   }

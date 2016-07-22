@@ -11,39 +11,39 @@
     Author: Aram Santogidis <aram.santogidis@cern.ch>
 */
 
-#ifndef TRANS_PERF_TEST_SCIFNODE_H
-#define TRANS_PERF_TEST_SCIFNODE_H
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "CannotResolve"
+#ifndef TRANS_PERF_TEST_TRANS4SCIFNODE_H
+#define TRANS_PERF_TEST_TRANS4SCIFNODE_H
 
-#include <scif.h>
-#include <memory>
-#include <algorithm>
+#include <trans4scif.h>
 #include "Node.h"
-#include "scifepd.h"
+#include "common.h"
 
-class ScifNode : public Node {
+class Trans4ScifNode : public Node  {
  private:
-  //The data_ can be transmitted multiple times
+  std::unique_ptr<t4s::Socket> t4ss_;
   std::unique_ptr<uint8_t[]> data_;
   uint8_t *d_idx_;
   uint8_t *d_end_;
-  ScifEpd epd_;
-  int transmission(int(*trans_prim)(scif_epd_t, void*, int, int), std::size_t sz );
   void alloc_init_data(std::size_t total_data_size);
 
  public:
+  // Connect
+  Trans4ScifNode(int16_t target_node_id, uint16_t target_port, std::size_t total_data_size) :
+      t4ss_(t4s::Connect(target_node_id, target_port))
+  { alloc_init_data(total_data_size); }
 
-  ScifNode(int node_id, int port, std::size_t total_data_size);
-  ScifNode(int port, std::size_t total_data_size);
+  // Listen
+  Trans4ScifNode(uint16_t listening_port, std::size_t total_data_size) :
+      t4ss_(t4s::Listen(listening_port))
+  { alloc_init_data(total_data_size); }
 
   void barrier() override;
 
-  int send(std::size_t sz) override {
-    return transmission(scif_send, sz);
-  }
+  int send(std::size_t sz) override;
 
-  int recv(std::size_t sz) override {
-    return transmission(scif_recv, sz);
-  }
+  int recv(std::size_t sz) override;
 
   bool verify_transmission_data() override {
     return std::all_of(data_.get(), d_end_, [](uint8_t v){return v == fill_value;});
@@ -51,4 +51,4 @@ class ScifNode : public Node {
 };
 
 
-#endif //TRANS_PERF_TEST_SCIFNODE_H
+#endif //TRANS_PERF_TEST_TRANS4SCIFNODE_H

@@ -23,11 +23,7 @@ ScifNode::ScifNode(int node_id, int port, std::size_t total_data_size) {
   if (scif_connect(epd_.get(), &target_addr) == -1)
     throw std::system_error(errno, std::system_category(), __FILE__LINE__);
 
-  //data_ allocation
-  data_.reset(new uint8_t[total_data_size]);
-  std::fill_n(data_.get(), total_data_size, fill_value);
-  d_idx_ = &data_[0];
-  d_end_ = d_idx_ + total_data_size;
+  alloc_init_data(total_data_size);
 }
 
 ScifNode::ScifNode(int port, std::size_t total_data_size) {
@@ -48,8 +44,12 @@ ScifNode::ScifNode(int port, std::size_t total_data_size) {
   epd_ = ScifEpd(acc_epd);
 
   //data_ allocation
+  alloc_init_data(total_data_size);
+}
+
+void ScifNode::alloc_init_data(std::size_t total_data_size) {
   data_.reset(new uint8_t[total_data_size]);
-  std::fill_n(data_.get(), total_data_size, 0);
+  std::fill_n(data_.get(), total_data_size, fill_value);
   d_idx_ = &data_[0];
   d_end_ = d_idx_ + total_data_size;
 }

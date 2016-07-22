@@ -1,6 +1,6 @@
 set(SOURCE_FILES
         main.cpp
-        ScifNode.cpp)
+        ScifNode.cpp Trans4ScifNode.cpp Trans4ScifNode.h)
 
 set(LIBS scif trans4scif pthread)
 
@@ -14,6 +14,4 @@ set_target_properties(tpt PROPERTIES
 #INSTALL
 install(TARGETS tpt DESTINATION ../bin)
 
-#add_executable(runner nonius_test.cpp)
 
-#target_link_libraries(runner pthread)
