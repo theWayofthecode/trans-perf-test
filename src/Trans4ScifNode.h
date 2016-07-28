@@ -39,6 +39,8 @@ class Trans4ScifNode : public Node  {
       t4ss_(t4s::Listen(listening_port))
   { alloc_init_data(total_data_size); }
 
+  //~Trans4ScifNode() override { std::cerr << "Trans4ScifNode destroyed!\n"; }
+
   void barrier() override;
 
   int send(std::size_t sz) override;

@@ -20,6 +20,13 @@ def get_dfs(filename, pattern_str):
                     dfs.append(store[j])
     return dfs
 
+#Check first if mean or median
+def get_thrs(lats_df):
+    thrs=pd.Series(index=lats_df.keys())
+    for k in lats_df.keys():
+        thrs[k] = k / lats_df[k].mean()
+    return thrs
+
 def get_df(filename, path):
     with pd.HDFStore(filename, mode='r') as store:
         return store[path]

@@ -27,7 +27,7 @@ void Trans4ScifNode::alloc_init_data(std::size_t total_data_size) {
   d_end_ = d_idx_ + total_data_size;
 }
 
-int Trans4ScifNode::send(std::size_t sz ) {
+int Trans4ScifNode::send(std::size_t sz) {
   std::size_t total_trans_size = sz;
   while (total_trans_size) {
     std::size_t to_trans = std::min(total_trans_size, static_cast<std::size_t>(d_end_ - d_idx_));
@@ -40,7 +40,7 @@ int Trans4ScifNode::send(std::size_t sz ) {
   return sz - total_trans_size;
 }
 
-int Trans4ScifNode::recv(std::size_t sz ) {
+int Trans4ScifNode::recv(std::size_t sz) {
   std::size_t total_trans_size = sz;
   while (total_trans_size) {
     std::size_t to_trans = std::min(total_trans_size, static_cast<std::size_t>(d_end_ - d_idx_));
@@ -58,7 +58,7 @@ void Trans4ScifNode::barrier() {
   assert(t4ss_->Send(&s, 1) == 1);
   uint8_t r = 0;
   for (int i = 0; t4ss_->Recv(&r, 1) < 1; ++i) {
-    if (i == 100)
+    if (i == 10000)
       throw std::runtime_error("Timeout in barrier");
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }

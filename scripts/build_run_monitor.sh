@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 if [ ! -d "../x86_64" ]; then
   cd ../
   mkdir x86_64
@@ -25,6 +27,10 @@ cd ../k1om
 make install
 cd ../bin
 mv tpt tpt_mic
+
+cp ../../scripts/build_run_monitor.sh ./
+cp ../../scripts/trans_perf_test.py ./
+cp ../../scripts/h5file.py ../../data/
 
 touch trans_perf_test.log
 python3 trans_perf_test.py &

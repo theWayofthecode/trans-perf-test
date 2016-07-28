@@ -64,9 +64,9 @@ if __name__ == "__main__":
 
     #Init parameters
     trans_proto = "trans4scif"
-    process_timeout = 120 #in seconds
-    chunk_sizes = list(map(lambda x: 2**x, range(6, 16)))
-    num_of_transfers = 100
+    process_timeout = 480 #in seconds
+    chunk_sizes = list(map(lambda x: 2**x, range(20, 21)))
+    num_of_transfers = 10
     total_size_limit = 2**30
 
     #Sender
@@ -122,6 +122,7 @@ if __name__ == "__main__":
             logging.exception('PairProcessAbort: %s :: %s', sender_cmd[chunk_size], receiver_cmd[chunk_size])
             sender_err[chunk_size] = [e.sender_returncode, e.sender_stderr]
             receiver_err[chunk_size] = [e.receiver_returncode, e.receiver_stderr]
+            break;
         else:
             sender_df[chunk_size] = pd.Series(mic_data, index=sender_df.index)
             receiver_df[chunk_size] = pd.Series(host_data, index=receiver_df.index)

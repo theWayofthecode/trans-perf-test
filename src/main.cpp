@@ -28,7 +28,7 @@
 
 enum Version {
   major = 0,
-  minor = 2
+  minor = 3
 };
 
 using hrclock = std::chrono::high_resolution_clock;
@@ -40,9 +40,18 @@ inline std::chrono::microseconds cast_microseconds(DurationType d) {
 
 Node *build_node(std::string, int node_id, int port, std::size_t total_data_size);
 void trans_perf(std::function<int(std::size_t)> transmission, int num_transfers, std::size_t chunk_size);
-
+int run(int argc, char **argv);
 
 int main(int argc, char **argv) {
+  try {
+    return run(argc, argv);
+  } catch (std::exception &e) {
+    std::cerr << "Unhandled Exception: " << e.what() << std::endl;
+    return -1;
+  }
+}
+
+int run(int argc, char **argv) {
   std::string options("t:n:p:s:c:u:v");
   int node_id = -1;
   int port = -1;
@@ -81,6 +90,8 @@ int main(int argc, char **argv) {
         break;
       case 'v':
         std::cout << Version::major << "." << Version::minor << std::endl;
+        std::cout << "=trans4scif=\n";
+        std::cout << t4s::trans4scif_config() << std::endl;
         return 0;
       default:
         std::cerr << "Unrecognized option -" << c << std::endl;
@@ -106,7 +117,6 @@ int main(int argc, char **argv) {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-
   n->barrier(); //we make sure the peers wait for each other
   if (node_id == -1) { //receiver side
     trans_perf([&n](std::size_t cz) { return n->recv(cz); }, num_transfers, chunk_size);
@@ -134,7 +144,7 @@ Node *build_node(std::string trans_type, int node_id, int port, std::size_t tota
 void trans_perf(std::function<int(std::size_t)> transmission, int num_transfers, std::size_t chunk_size) {
   for (int i = 0; i < num_transfers; ++i) {
     auto start = hrclock::now();
-    transmission(chunk_size);
+    assert (chunk_size == transmission(chunk_size));
     auto end = hrclock::now();
     std::cout << cast_microseconds(end - start).count() << " ";
   }
