@@ -2,6 +2,20 @@
 
 set -e
 
+function run {
+    touch trans_perf_test.log
+    python3 trans_perf_test.py
+    #tail -f --pid=$! trans_perf_test.log
+}
+
+function rebuild_t4s {
+    cd ../../../Trans4SCIF/build
+    rm -rf k1om
+    rm -rf x86_64
+    T4S_RECV_BUF_SIZE=$1 sh build_host_mic.sh
+    cd ../../trans-perf-test/build/bin
+}
+
 if [ ! -d "../x86_64" ]; then
   cd ../
   mkdir x86_64
@@ -32,6 +46,9 @@ cp ../../scripts/build_run_monitor.sh ./
 cp ../../scripts/trans_perf_test.py ./
 cp ../../scripts/h5file.py ../../data/
 
-touch trans_perf_test.log
-python3 trans_perf_test.py &
-tail -f --pid=$! trans_perf_test.log
+for i in `seq 5 15`;
+do
+    rebuild_t4s $((2**i))
+    run
+done
+

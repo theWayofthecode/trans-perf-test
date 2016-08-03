@@ -65,8 +65,9 @@ if __name__ == "__main__":
     #Init parameters
     trans_proto = "trans4scif"
     process_timeout = 480 #in seconds
-    chunk_sizes = list(map(lambda x: 2**x, range(20, 21)))
-    num_of_transfers = 10
+#    chunk_sizes = list(map(lambda x: 2**x, range(20, 21)))
+    chunk_sizes = [2**20, 2**27]
+    num_of_transfers = 100
     total_size_limit = 2**30
 
     #Sender
