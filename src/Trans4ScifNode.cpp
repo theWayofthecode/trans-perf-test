@@ -31,7 +31,7 @@ int Trans4ScifNode::send(std::size_t sz) {
   std::size_t total_trans_size = sz;
   while (total_trans_size) {
     std::size_t to_trans = std::min(total_trans_size, static_cast<std::size_t>(d_end_ - d_idx_));
-    std::size_t rc = t4ss_->Send(d_idx_, to_trans);
+    std::size_t rc = t4ss_->send(d_idx_, to_trans);
     d_idx_ += rc;
     if (d_idx_ == d_end_)
       d_idx_ = data_.get();
@@ -44,7 +44,7 @@ int Trans4ScifNode::recv(std::size_t sz) {
   std::size_t total_trans_size = sz;
   while (total_trans_size) {
     std::size_t to_trans = std::min(total_trans_size, static_cast<std::size_t>(d_end_ - d_idx_));
-    std::size_t rc = t4ss_->Recv(d_idx_, to_trans);
+    std::size_t rc = t4ss_->recv(d_idx_, to_trans);
     d_idx_ += rc;
     if (d_idx_ == d_end_)
       d_idx_ = data_.get();
@@ -55,9 +55,13 @@ int Trans4ScifNode::recv(std::size_t sz) {
 
 void Trans4ScifNode::barrier() {
   uint8_t s = 'x';
-  assert(t4ss_->Send(&s, 1) == 1);
+  for (int i = 0; t4ss_->send(&s, 1) < 1; ++i) {
+    if (i == 10000)
+      throw std::runtime_error("Timeout in barrier");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
   uint8_t r = 0;
-  for (int i = 0; t4ss_->Recv(&r, 1) < 1; ++i) {
+  for (int i = 0; t4ss_->recv(&r, 1) < 1; ++i) {
     if (i == 10000)
       throw std::runtime_error("Timeout in barrier");
     std::this_thread::sleep_for(std::chrono::milliseconds(1));

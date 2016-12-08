@@ -1,8 +1,13 @@
 set(SOURCE_FILES
         main.cpp
-        ScifNode.cpp Trans4ScifNode.cpp Trans4ScifNode.h)
+        ScifNode.cpp
+        ScifFenceNode.cpp
+        BlockingNode.cpp
+        ZeroMQNode.cpp
+        Trans4ScifNode.cpp
+        Trans4ScifNode.h)
 
-set(LIBS scif trans4scif pthread)
+set(LIBS scif trans4scif pthread zmq)
 
 include_directories("/usr/local/include")
 

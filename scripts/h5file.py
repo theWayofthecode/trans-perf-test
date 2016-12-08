@@ -9,7 +9,6 @@ def del_path(filename, path):
     with pd.HDFStore(filename) as store:
         del store[path]
 
-#Not tested yet
 def get_dfs(filename, pattern_str):
     pattern = re.compile(pattern_str)
     dfs=[]
@@ -20,11 +19,12 @@ def get_dfs(filename, pattern_str):
                     dfs.append(store[j])
     return dfs
 
-#Check first if mean or median
 def get_thrs(lats_df):
     thrs=pd.Series(index=lats_df.keys())
     for k in lats_df.keys():
-        thrs[k] = k / lats_df[k].mean()
+        lats_df_sorted = lats_df[k].sort_values()
+        median = (lats_df_sorted[499] + lats_df_sorted[500])/2
+        thrs[k] = k / median
     return thrs
 
 def get_df(filename, path):

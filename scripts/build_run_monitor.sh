@@ -42,13 +42,13 @@ make install
 cd ../bin
 mv tpt tpt_mic
 
-cp ../../scripts/build_run_monitor.sh ./
+#cp ../../scripts/build_run_monitor.sh ./
 cp ../../scripts/trans_perf_test.py ./
 cp ../../scripts/h5file.py ../../data/
 
-for i in `seq 5 15`;
-do
-    rebuild_t4s $((2**i))
-    run
-done
+#for i in `seq 5 15`;
+#do
+#    rebuild_t4s $((2**i))
+#    run
+#done
 

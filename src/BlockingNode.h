@@ -11,28 +11,34 @@
     Author: Aram Santogidis <aram.santogidis@cern.ch>
 */
 
-#ifndef TRANS_PERF_TEST_SCIFFENCENODE_H
-#define TRANS_PERF_TEST_SCIFFENCENODE_H
+#ifndef TRANS_PERF_TEST_BLOCKINGNODE_H
+#define TRANS_PERF_TEST_BLOCKINGNODE_H
 
 #include <scif.h>
 #include <memory>
 #include <algorithm>
+#include <condition_variable>
 #include "Node.h"
 #include "scifepd.h"
 
-class ScifFenceNode : public Node {
+class BlockingNode: public Node {
  private:
+  struct sync {
+    std::mutex m;
+    std::condition_variable cv;
+    bool ready = false;
+  };
+  bool connector = false;
   ScifEpd epd_;
   void *mem_ = nullptr;
   off_t off_;
   uint64_t val_ = 0;
-  static constexpr int PAGE_SIZE=0x1000;
-
+  static constexpr int PAGE_SIZE = 0x1000;
  public:
 
-  ScifFenceNode(int node_id, int port);
-  ScifFenceNode(int port);
-  ~ScifFenceNode();
+  BlockingNode(int node_id, int port);
+  BlockingNode(int port);
+  ~BlockingNode();
 
   void barrier() override;
 

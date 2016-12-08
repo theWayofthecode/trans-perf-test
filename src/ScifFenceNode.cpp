@@ -61,8 +61,10 @@ ScifFenceNode::ScifFenceNode(int port) {
 }
 
 ScifFenceNode::~ScifFenceNode() {
-  scif_unregister(epd_.get(), off_, PAGE_SIZE); 
-  free(mem_);
+  if (mem_) {
+    scif_unregister(epd_.get(), off_, PAGE_SIZE);
+    free(mem_);
+  }
 }
 
 int ScifFenceNode::send(std::size_t sz) {

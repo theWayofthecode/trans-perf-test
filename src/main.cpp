@@ -25,10 +25,13 @@
 #include "Node.h"
 #include "ScifNode.h"
 #include "Trans4ScifNode.h"
+#include "ScifFenceNode.h"
+#include "BlockingNode.h"
+#include "ZeroMQNode.h"
 
 enum Version {
-  major = 0,
-  minor = 3
+  major = 4,
+  minor = 0
 };
 
 using hrclock = std::chrono::high_resolution_clock;
@@ -46,7 +49,7 @@ int main(int argc, char **argv) {
   try {
     return run(argc, argv);
   } catch (std::exception &e) {
-    std::cerr << "Unhandled Exception: " << e.what() << std::endl;
+    std::cerr << "MAIN: Exception: " << e.what() << std::endl;
     return -1;
   }
 }
@@ -69,6 +72,7 @@ int run(int argc, char **argv) {
         break;
       case 'n':
         node_id = std::stoi(optarg);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         break;
       case 'p':
         port = std::stoi(optarg);
@@ -100,7 +104,6 @@ int run(int argc, char **argv) {
   }
   assert (port > 0);
   assert (chunk_size > 0);
-  assert (total_data_size >= chunk_size);
   assert (num_transfers > 0);
   assert (trans_type != "");
 
@@ -111,11 +114,10 @@ int run(int argc, char **argv) {
       //therefore we try for some time to reconnect
       n.reset(build_node(trans_type, node_id, port, total_data_size));
       break;
-    } catch (std::system_error se) {
-      if (se.code().value() != ECONNREFUSED || i == 1000)
+    } catch (std::system_error e) {
+      if (e.code().value() != ECONNREFUSED || i == 2000)
         throw;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   n->barrier(); //we make sure the peers wait for each other
   if (node_id == -1) { //receiver side
@@ -123,7 +125,8 @@ int run(int argc, char **argv) {
   } else { //sender side
     trans_perf([&n](std::size_t cz) { return n->send(cz); }, num_transfers, chunk_size);
   }
-  assert(n->verify_transmission_data());
+  //n->barrier(); //we make sure the peers wait for each other
+  //assert(n->verify_transmission_data());
   return 0;
 }
 
@@ -136,6 +139,22 @@ Node *build_node(std::string trans_type, int node_id, int port, std::size_t tota
     return (node_id == -1) ?
            new Trans4ScifNode(port, total_data_size) :
            new Trans4ScifNode(node_id, port, total_data_size);
+  } else if (trans_type == "sciffence") {
+    return (node_id == -1) ?
+           new ScifFenceNode(port) :
+           new ScifFenceNode(node_id, port);
+  } else if (trans_type == "blocking") {
+    return (node_id == -1) ?
+           new BlockingNode(port) :
+           new BlockingNode(node_id, port);
+  } else if (trans_type == "zeromqtcp") {
+    return (node_id == -1) ?
+           new ZeroMQNode("tcp://*:", port, total_data_size) :
+           new ZeroMQNode("tcp://", "mic0", port, total_data_size);
+  } else if (trans_type == "zeromqscif") {
+    return (node_id == -1) ?
+           new ZeroMQNode("scif://", port, total_data_size) :
+           new ZeroMQNode("scif://", std::to_string(node_id), port, total_data_size);
   } else {
     throw std::invalid_argument("Unsupported transport type: " + trans_type);
   }

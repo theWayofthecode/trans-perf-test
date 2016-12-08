@@ -11,33 +11,33 @@
     Author: Aram Santogidis <aram.santogidis@cern.ch>
 */
 
-#ifndef TRANS_PERF_TEST_TRANS4SCIFNODE_H
-#define TRANS_PERF_TEST_TRANS4SCIFNODE_H
+#ifndef TRANS_PERF_TEST_ZEROMQNODE_H
+#define TRANS_PERF_TEST_ZEROMQNODE_H
 
-#include <trans4scif.h>
+#include <zmq.h>
+#include <cstdint>
+#include <memory>
 #include "Node.h"
 #include "common.h"
 
-class Trans4ScifNode : public Node  {
+class ZeroMQNode : public Node  {
  private:
-  std::unique_ptr<t4s::Socket> t4ss_;
+  void *ctx_;
+  void *s_;
   std::unique_ptr<uint8_t[]> data_;
   uint8_t *d_idx_;
   uint8_t *d_end_;
   void alloc_init_data(std::size_t total_data_size);
+  bool listener;
 
  public:
   // Connect
-  Trans4ScifNode(int16_t target_node_id, uint16_t target_port, std::size_t total_data_size) :
-      t4ss_(t4s::connectingSocket(target_node_id, target_port))
-  { alloc_init_data(total_data_size); }
+  explicit ZeroMQNode(std::string trans_prefix, std::string target_node_id, uint16_t target_port, std::size_t total_data_size);
 
   // Listen
-  Trans4ScifNode(uint16_t listening_port, std::size_t total_data_size) :
-      t4ss_(t4s::listeningSocket(listening_port))
-  { alloc_init_data(total_data_size); }
+  explicit ZeroMQNode(std::string trans_prefix, uint16_t listening_port, std::size_t total_data_size);
 
-  //~Trans4ScifNode() override { std::cerr << "Trans4ScifNode destroyed!\n"; }
+  ~ZeroMQNode();
 
   void barrier() override;
 
@@ -51,4 +51,4 @@ class Trans4ScifNode : public Node  {
 };
 
 
-#endif //TRANS_PERF_TEST_TRANS4SCIFNODE_H
+#endif //TRANS_PERF_TEST_ZEROMQNODE_H

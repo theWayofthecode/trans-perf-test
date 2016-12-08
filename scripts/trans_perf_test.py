@@ -64,10 +64,10 @@ if __name__ == "__main__":
 
     #Init parameters
     trans_proto = "trans4scif"
-    process_timeout = 480 #in seconds
-#    chunk_sizes = list(map(lambda x: 2**x, range(20, 21)))
-    chunk_sizes = [2**20, 2**27]
-    num_of_transfers = 100
+    process_timeout = 120 #in seconds
+    chunk_sizes = list(map(lambda x: 2**x, range(20, 28)))
+    #chunk_sizes = [2**20, 2**27]
+    num_of_transfers = 10
     total_size_limit = 2**30
 
     #Sender
@@ -81,12 +81,8 @@ if __name__ == "__main__":
     receiver_err = pd.DataFrame(index=["return_code", "stderr"])
 
     logging.info(' ======= experiment parameters ======= \n'+\
-                 'trans_proto = %s\n'+\
-                 'cnunk_sizes = %s\n'+\
-                 'num_of_transfers = %d\n'+ \
-                 'total_size_limit = %d\n'+ \
                  'process_timeout = %d\n',\
-                 trans_proto, str(chunk_sizes), num_of_transfers, total_size_limit, process_timeout)
+                  process_timeout)
 
     for chunk_size in chunk_sizes:
         total_size = chunk_size * num_of_transfers
@@ -98,20 +94,22 @@ if __name__ == "__main__":
         # Cook the commands
         host_cmd = ["./tpt_host", \
                     "-t", trans_proto, \
+                    "-n 1", \
                     "-p", str(port), \
                     "-s", str(total_size), \
                     "-c", str(chunk_size), \
                     "-u", str(num_of_transfers)]
 
         mic_cmd = ["micnativeloadex", "tpt_mic", \
+                   "-d", "0", \
                    "-a", \
-                   " -t " + trans_proto + \
-                   " -n 0" + \
+                   "\' -t " + trans_proto + \
                    " -p " + str(port) + \
                    " -s " + str(total_size) + \
                    " -c " + str(chunk_size) + \
-                   " -u " + str(num_of_transfers)]
+                   " -u " + str(num_of_transfers) + "\'"]
 
+        logging.info(str(host_cmd) + "\n" + str(mic_cmd) + "\n")
         sender_cmd[chunk_size] = str(mic_cmd)
         receiver_cmd[chunk_size] = str(host_cmd)
         
