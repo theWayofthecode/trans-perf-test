@@ -26,8 +26,8 @@
 #include "ScifNode.h"
 #include "Trans4ScifNode.h"
 #include "ScifFenceNode.h"
-#include "BlockingNode.h"
 #include "ZeroMQNode.h"
+#include "ScifmmapNode.h"
 
 enum Version {
   major = 4,
@@ -42,7 +42,8 @@ inline std::chrono::microseconds cast_microseconds(DurationType d) {
 }
 
 Node *build_node(std::string, int node_id, int port, std::size_t total_data_size);
-void trans_perf(std::function<int(std::size_t)> transmission, int num_transfers, std::size_t chunk_size);
+void trans_throughput_perf(std::function<int(std::size_t)> transmission, int num_transfers, std::size_t chunk_size);
+void trans_RTT_perf(std::shared_ptr<Node> &n, int node_id, int num_transfers, std::size_t chunk_size);
 int run(int argc, char **argv);
 
 int main(int argc, char **argv) {
@@ -55,10 +56,11 @@ int main(int argc, char **argv) {
 }
 
 int run(int argc, char **argv) {
-  std::string options("t:n:p:s:c:u:v");
+  std::string options("t:n:p:s:c:u:r:v");
   int node_id = -1;
   int port = -1;
   int num_transfers = 0;
+  bool RTT_perf = false;
   std::size_t chunk_size = 0;
   std::size_t total_data_size = 0;
   std::string trans_type("");
@@ -97,18 +99,22 @@ int run(int argc, char **argv) {
         std::cout << "=trans4scif=\n";
         std::cout << t4s::trans4scif_config() << std::endl;
         return 0;
+      case 'r':
+        RTT_perf = true;
+        break;
       default:
-        std::cerr << "Unrecognized option -" << c << std::endl;
+        std::cerr << "Unrecognized option -" << static_cast<char>(c) << std::endl;
         return -1;
     }
   }
   assert (port > 0);
   assert (chunk_size > 0);
+  assert (total_data_size > 0);
   assert (num_transfers > 0);
   assert (trans_type != "");
 
-  std::unique_ptr<Node> n;
-  for (int i = 0; ; ++i) {
+  std::shared_ptr<Node> n;
+  for (int i = 0;; ++i) {
     try {
       //if we are building a connecting node, it may fail because the listening node is not ready yet
       //therefore we try for some time to reconnect
@@ -119,14 +125,17 @@ int run(int argc, char **argv) {
         throw;
     }
   }
+
   n->barrier(); //we make sure the peers wait for each other
-  if (node_id == -1) { //receiver side
-    trans_perf([&n](std::size_t cz) { return n->recv(cz); }, num_transfers, chunk_size);
+  if (RTT_perf) {
+    trans_RTT_perf(n, node_id, num_transfers, chunk_size);
+  } else if (node_id == -1) { // (assuming throughput test) receiver side
+    trans_throughput_perf([&n](std::size_t cz) { return n->recv(cz); }, num_transfers, chunk_size);
   } else { //sender side
-    trans_perf([&n](std::size_t cz) { return n->send(cz); }, num_transfers, chunk_size);
+    trans_throughput_perf([&n](std::size_t cz) { return n->send(cz); }, num_transfers, chunk_size);
   }
-  //n->barrier(); //we make sure the peers wait for each other
-  //assert(n->verify_transmission_data());
+  assert(n->verify_transmission_data());
+  n->barrier(); //we make sure the peers wait for each other
   return 0;
 }
 
@@ -143,10 +152,10 @@ Node *build_node(std::string trans_type, int node_id, int port, std::size_t tota
     return (node_id == -1) ?
            new ScifFenceNode(port) :
            new ScifFenceNode(node_id, port);
-  } else if (trans_type == "blocking") {
+  } else if (trans_type == "scifmmap") {
     return (node_id == -1) ?
-           new BlockingNode(port) :
-           new BlockingNode(node_id, port);
+           new ScifmmapNode(port, total_data_size) :
+           new ScifmmapNode(node_id, port, total_data_size);
   } else if (trans_type == "zeromqtcp") {
     return (node_id == -1) ?
            new ZeroMQNode("tcp://*:", port, total_data_size) :
@@ -160,11 +169,29 @@ Node *build_node(std::string trans_type, int node_id, int port, std::size_t tota
   }
 }
 
-void trans_perf(std::function<int(std::size_t)> transmission, int num_transfers, std::size_t chunk_size) {
+void trans_throughput_perf(std::function<int(std::size_t)> transmission, int num_transfers, std::size_t chunk_size) {
   for (int i = 0; i < num_transfers; ++i) {
     auto start = hrclock::now();
-    assert (chunk_size == transmission(chunk_size));
+    transmission(chunk_size);
     auto end = hrclock::now();
     std::cout << cast_microseconds(end - start).count() << " ";
+  }
+}
+
+void trans_RTT_perf(std::shared_ptr<Node> &n, int node_id, int num_transfers, std::size_t chunk_size) {
+  if (node_id == -1) { // Receiver
+    for (int i = 0; i < num_transfers; ++i) {
+      n->recv(chunk_size);
+      n->send(chunk_size);
+      std::cout << 0 << " ";
+    }
+  } else { // The node that measures RTT
+    for (int i = 0; i < num_transfers; ++i) {
+      auto start = hrclock::now();
+      n->send(chunk_size);
+      n->recv(chunk_size);
+      auto end = hrclock::now();
+      std::cout << cast_microseconds(end - start).count() << " ";
+    }
   }
 }

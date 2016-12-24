@@ -10,17 +10,11 @@
 
     Author: Aram Santogidis <aram.santogidis@cern.ch>
 */
+#include <system_error>
+#include "common.h"
 
-#ifndef TRANS_PERF_TEST_COMMON_H
-#define TRANS_PERF_TEST_COMMON_H
-
-#define INT_TO_STR_(i) #i
-#define INT_TO_STR(i) INT_TO_STR_(i)
-#define __FILE__LINE__ (__FILE__ + std::string(":") + INT_TO_STR(__LINE__))
-
-// Used to fill the transmission data arrays
-constexpr uint8_t fill_value = 0xAB;
-
-void if_err_throw(int rc);
-
-#endif //TRANS_PERF_TEST_COMMON_H
+void if_err_throw(int rc)
+{
+  if (rc == -1)
+    throw std::system_error(errno, std::system_category(), __FILE__LINE__);
+}

@@ -2,8 +2,9 @@ set(SOURCE_FILES
         main.cpp
         ScifNode.cpp
         ScifFenceNode.cpp
-        BlockingNode.cpp
+        ScifmmapNode.cpp
         ZeroMQNode.cpp
+        common.cpp
         Trans4ScifNode.cpp
         Trans4ScifNode.h)
 

@@ -14,7 +14,6 @@ import logging
 # print(args.total_size)
 
 
-#print run sequence number
 class PairProcessAbort(Exception):
     def __init__(self, sender_returncode, sender_stderr, receiver_returncode, receiver_stderr):
         self.sender_returncode = sender_returncode
@@ -58,31 +57,42 @@ def init_modules():
     pd.set_option('display.max_colwidth', -1)
     random.seed()
 
+##################################################
 ## MAIN ##
+##################################################
+
 if __name__ == "__main__":
     init_modules()
 
     #Init parameters
+    host_cmd_version = subprocess.check_output(["./tpt_host", "-v"], universal_newlines=True)
+    mic_cmd_version = subprocess.check_output(["micnativeloadex", "tpt_mic", "-a", "-v"], universal_newlines=True)
+
     trans_proto = "trans4scif"
     process_timeout = 120 #in seconds
-    chunk_sizes = list(map(lambda x: 2**x, range(20, 28)))
-    #chunk_sizes = [2**20, 2**27]
-    num_of_transfers = 10
+    chunk_sizes = list(map(lambda x: 2**x, range(20, 26)))
+    #chunk_sizes = [1]
+    num_of_transfers = 1000
     total_size_limit = 2**30
+    #TODO: host-MIC vs send-recv
+    RTT = False
+    #TODO: use this variable in the following
+    mic_to_host = True
+    params = 'chunk_size: ' + str(chunk_sizes) +\
+        ' trans_proto: ' + trans_proto +\
+        ' num_of_transfers: ' + str(num_of_transfers) +\
+        ' total_size_limit: ' + str(total_size_limit) +\
+        ' RTT: ' + str(RTT) +\
+        ' mic_to_host: ' + str(mic_to_host) +\
+        '\n' + host_cmd_version + '\n' +\
+        mic_cmd_version + '\n'
 
-    #Sender
     sender_df = pd.DataFrame(index=range(0, num_of_transfers))
-    sender_cmd = pd.Series("Command")
-    sender_err = pd.DataFrame(index=["return_code", "stderr"])
-
-    #Receiver
     receiver_df = pd.DataFrame(index=range(0, num_of_transfers))
-    receiver_cmd = pd.Series("Command")
-    receiver_err = pd.DataFrame(index=["return_code", "stderr"])
 
     logging.info(' ======= experiment parameters ======= \n'+\
-                 'process_timeout = %d\n',\
-                  process_timeout)
+                 'process_timeout = %d\n' + params ,\
+                 process_timeout)
 
     for chunk_size in chunk_sizes:
         total_size = chunk_size * num_of_transfers
@@ -92,56 +102,59 @@ if __name__ == "__main__":
             total_size = total_size_limit
 
         # Cook the commands
-        host_cmd = ["./tpt_host", \
+        receiver_cmd = ["./tpt_host", \
                     "-t", trans_proto, \
-                    "-n 1", \
                     "-p", str(port), \
                     "-s", str(total_size), \
                     "-c", str(chunk_size), \
                     "-u", str(num_of_transfers)]
+        if RTT :
+            receiver_cmd.extend(["-r", str(1)])
 
-        mic_cmd = ["micnativeloadex", "tpt_mic", \
+        sender_cmd = ["micnativeloadex", "tpt_mic", \
                    "-d", "0", \
-                   "-a", \
-                   "\' -t " + trans_proto + \
+                   "-a"]
+        sender_pars = "\' -n 0 -t " + trans_proto + \
                    " -p " + str(port) + \
                    " -s " + str(total_size) + \
                    " -c " + str(chunk_size) + \
-                   " -u " + str(num_of_transfers) + "\'"]
+                   " -u " + str(num_of_transfers) + "\'"
+        sender_cmd.append(sender_pars)
+        # if RTT :
+        #     mic_pars += " -r 1 \'"
+        # else :
+        #     mic_pars += " \'"
+        # mic_cmd.append(mic_pars)
 
-        logging.info(str(host_cmd) + "\n" + str(mic_cmd) + "\n")
-        sender_cmd[chunk_size] = str(mic_cmd)
-        receiver_cmd[chunk_size] = str(host_cmd)
+        logging.info(str(sender_cmd) + str(receiver_cmd) + '\n')
         
         # RUN
         try:
-            mic_data, host_data = run_trans_perf_test(mic_cmd, host_cmd)
+            mic_data, host_data = run_trans_perf_test(sender_cmd, receiver_cmd)
             logging.info('Success[%d]', chunk_size)
         except PairProcessAbort as e:
             logging.exception('PairProcessAbort: %s :: %s', sender_cmd[chunk_size], receiver_cmd[chunk_size])
-            sender_err[chunk_size] = [e.sender_returncode, e.sender_stderr]
-            receiver_err[chunk_size] = [e.receiver_returncode, e.receiver_stderr]
             break;
         else:
             sender_df[chunk_size] = pd.Series(mic_data, index=sender_df.index)
-            receiver_df[chunk_size] = pd.Series(host_data, index=receiver_df.index)
+            if not RTT:
+                receiver_df[chunk_size] = pd.Series(host_data, index=receiver_df.index)
 
-    host_cmd_version = subprocess.check_output(["./tpt_host", "-v"], universal_newlines=True)
-    mic_cmd_version = subprocess.check_output(["micnativeloadex", "tpt_mic", "-a", "-v"], universal_newlines=True)
 
-    hdfstore_root = os.uname().nodename+"/" \
-                    +trans_proto+"/" \
-                    +get_timestamp()+"/"
+### Storing permanently data ###
 
-    if sender_err.empty and receiver_err.empty:
-        with pd.HDFStore('../../data/trans_perf_test.h5') as store:
-            #Sender
-            store[hdfstore_root+'sender'] = sender_df
-            store.get_storer(hdfstore_root+'sender').attrs.cmds = sender_cmd
-            store.get_storer(hdfstore_root+'sender').attrs.errors = sender_err
-            store.get_storer(hdfstore_root+'sender').attrs.version = mic_cmd_version
-            #Receiver
-            store[hdfstore_root+'receiver'] = receiver_df
-            store.get_storer(hdfstore_root+'receiver').attrs.cmds = receiver_cmd
-            store.get_storer(hdfstore_root+'receiver').attrs.errors = receiver_err
-            store.get_storer(hdfstore_root+'receiver').attrs.version = host_cmd_version
+    data_root = '../../data/'+os.uname().nodename+"/" +trans_proto+"/"
+    TS = get_timestamp()
+
+    # TODO: change host/mic to sender/receiver
+    sender_df.to_csv(data_root+"sender_"+TS+".csv")
+    if not RTT:
+        receiver_df.to_csv(data_root+"receiver_"+TS+".csv")
+
+    # TODO: file not found
+    with open(data_root+"METADATA.txt", "a") as f:
+        f.write("\n################################\n")
+        f.write(TS)
+        f.write('tpt_host -v ' + host_cmd_version + '\n')
+        f.write('tpt_mic -v ' + mic_cmd_version + '\n')
+        f.write(params)

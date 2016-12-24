@@ -20,8 +20,7 @@ ScifNode::ScifNode(int node_id, int port, std::size_t total_data_size) {
   struct scif_portID target_addr;
   target_addr.node = node_id;
   target_addr.port = port;
-  if (scif_connect(epd_.get(), &target_addr) == -1)
-    throw std::system_error(errno, std::system_category(), __FILE__LINE__);
+  if_err_throw(scif_connect(epd_.get(), &target_addr));
 
   alloc_init_data(total_data_size);
 }
@@ -29,21 +28,17 @@ ScifNode::ScifNode(int node_id, int port, std::size_t total_data_size) {
 ScifNode::ScifNode(int port, std::size_t total_data_size) {
   ScifEpd l;
 
-  if (scif_bind(l.get(), port) == -1)
-    throw std::system_error(errno, std::system_category(), __FILE__LINE__);
+  if_err_throw(scif_bind(l.get(), port));
 
   // listen (backlog = 1)
-  if (scif_listen(l.get(), 1) == -1)
-    throw std::system_error(errno, std::system_category(), __FILE__LINE__);
+  if_err_throw(scif_listen(l.get(), 1));
 
   // accept
   scif_epd_t acc_epd;
   struct scif_portID peer_addr;
-  if (scif_accept(l.get(), &peer_addr, &acc_epd, SCIF_ACCEPT_SYNC) == -1)
-    throw std::system_error(errno, std::system_category(), __FILE__LINE__);
+  if_err_throw(scif_accept(l.get(), &peer_addr, &acc_epd, SCIF_ACCEPT_SYNC));
   epd_ = ScifEpd(acc_epd);
 
-  //data_ allocation
   alloc_init_data(total_data_size);
 }
 
@@ -59,8 +54,7 @@ int ScifNode::transmission(int(*trans_prim)(scif_epd_t, void*, int, int), std::s
   while (total_trans_size) {
     std::size_t to_trans = std::min(total_trans_size, static_cast<std::size_t>(d_end_ - d_idx_));
     int rc = trans_prim(epd_.get(), d_idx_, to_trans, 0);
-    if (rc == -1)
-      throw std::system_error(errno, std::system_category(), __FILE__LINE__);
+    if_err_throw(rc);
     d_idx_ += rc;
     if (d_idx_ == d_end_)
       d_idx_ = data_.get();
@@ -70,13 +64,8 @@ int ScifNode::transmission(int(*trans_prim)(scif_epd_t, void*, int, int), std::s
 }
 
 void ScifNode::barrier() {
-  char s = 'x';
-  int rc = scif_send(epd_.get(), &s, 1, SCIF_SEND_BLOCK);
-  if (rc == -1)
-    throw std::system_error(errno, std::system_category(), __FILE__LINE__);
-  char r = 0;
-  rc = scif_recv(epd_.get(), &r, 1, SCIF_RECV_BLOCK);
-  if (rc == -1)
-    throw std::system_error(errno, std::system_category(), __FILE__LINE__);
+  char s = 'x', r = 0;
+  if_err_throw(scif_send(epd_.get(), &s, 1, SCIF_SEND_BLOCK));
+  if_err_throw(scif_recv(epd_.get(), &r, 1, SCIF_RECV_BLOCK));
   assert(r == 'x');
 }
