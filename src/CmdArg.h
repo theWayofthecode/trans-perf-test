@@ -20,11 +20,11 @@ class CmdArg {
  private:
   int node_id_ = -1;
   int port_ = -1;
-  int num_transfers_ = 0;
-  bool RTT_perf_ = false;
+  int reps_ = 0;
+  std::string experiment_;
   std::size_t chunk_size_ = 0;
   std::size_t total_data_size_ = 0;
-  std::string trans_type_;
+  std::string node_type_;
   bool version_ = false;
 
  public:
@@ -38,12 +38,12 @@ class CmdArg {
     return port_;
   }
 
-  int getNum_transfers() const {
-    return num_transfers_;
+  int getReps() const {
+    return reps_;
   }
 
-  bool getRTT_perf() const {
-    return RTT_perf_;
+  std::string getExperiment() const {
+    return experiment_;
   }
 
   std::size_t getChunk_size() const {
@@ -58,8 +58,8 @@ class CmdArg {
     return version_;
   }
 
-  std::string getTrans_type() const {
-    return trans_type_;
+  std::string getNode_type() const {
+    return node_type_;
   }
 };
 

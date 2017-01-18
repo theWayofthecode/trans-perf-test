@@ -16,15 +16,16 @@
 #include "CmdArg.h"
 
 CmdArg::CmdArg(int argc, char **argv) {
-  std::string options("t:n:p:s:c:u:r:v");
+  std::string options("t:n:p:s:c:u:e:v");
   int c;
   opterr = 0;
   while ((c = getopt(argc, argv, options.c_str())) != -1) {
     switch (c) {
       case 't':
-        trans_type_ = optarg;
+        node_type_ = optarg;
         break;
       case 'n':
+        //TODO: std::to_string ?
         node_id_ = std::stoi(optarg);
         break;
       case 'p':
@@ -37,13 +38,13 @@ CmdArg::CmdArg(int argc, char **argv) {
         chunk_size_ = static_cast<std::size_t> (std::stoi(optarg));
         break;
       case 'u':
-        num_transfers_ = std::stoi(optarg);
+        reps_ = std::stoi(optarg);
         break;
       case 'v':
         version_ = true;
         break;
-      case 'r':
-        RTT_perf_ = true;
+      case 'e':
+        experiment_ = optarg;
         break;
       default:
         throw std::invalid_argument("Unrecognized option in argument list.");

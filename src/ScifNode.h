@@ -17,37 +17,38 @@
 #include <scif.h>
 #include <memory>
 #include <algorithm>
+#include <queue>
 #include "Node.h"
 #include "scifepd.h"
+#include "CmdArg.h"
 
-class ScifNode : public Node {
+class ScifNode : public Node<ScifNode> {
  private:
+
+  struct RMAWindow {
+    off_t off;
+    std::size_t sz;
+  };
+
   //The data_ can be transmitted multiple times
-  std::unique_ptr<uint8_t[]> data_;
-  uint8_t *d_idx_;
-  uint8_t *d_end_;
   ScifEpd epd_;
-  int transmission(int(*trans_prim)(scif_epd_t, void*, int, int), std::size_t sz );
+  std::unique_ptr<uint8_t> mem_;
+  uint8_t *mem_end_ = nullptr;
+  std::size_t total_size_;
   void alloc_init_data(std::size_t total_data_size);
+  void listen(int port);
+  void connect(int node_id, int port);
+
+  std::queue<RMAWindow> winQ;
 
  public:
+  ScifNode(CmdArg args);
+  ~ScifNode();
+  std::size_t send(uint8_t *data, std::size_t sz);
+  std::size_t recv(uint8_t *data, std::size_t sz);
+  microseconds mem_reg(std::size_t sz);
+  microseconds mem_unreg();
 
-  ScifNode(int node_id, int port, std::size_t total_data_size);
-  ScifNode(int port, std::size_t total_data_size);
-
-  void barrier() override;
-
-  int send(std::size_t sz) override {
-    return transmission(scif_send, sz);
-  }
-
-  int recv(std::size_t sz) override {
-    return transmission(scif_recv, sz);
-  }
-
-  bool verify_transmission_data() override {
-    return std::all_of(data_.get(), d_end_, [](uint8_t v){return v == fill_value;});
-  }
 };
 
 

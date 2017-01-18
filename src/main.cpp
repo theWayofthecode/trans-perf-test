@@ -14,26 +14,23 @@
 #include <iostream>
 #include <string>
 #include <cassert>
-#include <chrono>
-#include <ctime>
+
 #include <memory>
 #include <thread>
 #include <stdexcept>
 #include <system_error>
+#include <cstdlib>
 #include <errno.h>
 #include <trans4scif.h>
 #include "CmdArg.h"
-//#include "Node.h"
-//#include "ScifNode.h"
-//#include "Trans4ScifNode.h"
-//#include "ScifFenceNode.h"
-//#include "ZeroMQNode.h"
-//#include "ScifmmapNode.h"
+#include "Node.h"
+#include "ScifNode.h"
+#include "common.h"
 
 
 //TODO: what is this? I have also versioning in CMakeList.txt
 enum Version {
-  major = 5,
+  major = 6,
   minor = 0
 };
 
@@ -47,25 +44,49 @@ inline std::chrono::microseconds cast_microseconds(DurationType d) {
 //Node *build_node(std::string, int node_id, int port, std::size_t total_data_size);
 //void trans_throughput_perf(std::function<int(std::size_t)> transmission, int num_transfers, std::size_t chunk_size);
 //void trans_RTT_perf(std::shared_ptr<Node> &n, int node_id, int num_transfers, std::size_t chunk_size);
-int run(int argc, char **argv);
 
-int main(int argc, char **argv) {
-  try {
-    return run(argc, argv);
-  } catch (std::exception &e) {
-    std::cerr << "MAIN: Exception: " << e.what() << std::endl;
-    return -1;
-  }
+template<typename NodeType>
+void run(NodeType &n) {
+  n.barrier();
+  log_msg("Starting experiments.");
+  while (n.experiment());
+  log_msg("Completed experiments.");
+  n.barrier();
 }
 
-int run(int argc, char **argv) {
-  CmdArg args(argc, argv);
-  if (args.getVersion()) {
-    std::cout << Version::major << "." << Version::minor << std::endl;
-    std::cout << "=trans4scif=\n";
-    std::cout << t4s::trans4scif_config() << std::endl;
-    return 0;
+int main(int argc, char **argv) {
+  log_msg(argv[0]);
+  try {
+
+    // Parse the command line arguments
+    CmdArg args(argc, argv);
+    if (args.getVersion()) {
+      std::cout << Version::major << "." << Version::minor << std::endl;
+      std::cout << "=trans4scif=\n";
+      std::cout << t4s::trans4scif_config() << std::endl;
+      return 0;
+    }
+
+    //Build the node and run the experiment
+    auto node_type = args.getNode_type();
+    if (node_type == "scif") {
+      ScifNode node(args);
+      run<ScifNode>(node);
+    } else {
+      std::cerr << "Unsupported Node type: " << node_type << std::endl;
+      return EXIT_FAILURE;
+    }
+
+  } catch (std::exception &e) {
+    std::cerr << "Exception: " << e.what() << std::endl;
+    return EXIT_FAILURE;
   }
+  return EXIT_SUCCESS;
+}
+
+
+//int run(int argc, char **argv) {
+
 //
 //  std::shared_ptr<Node> n;
 //  for (int i = 0;; ++i) {
@@ -90,8 +111,8 @@ int run(int argc, char **argv) {
 //  }
 //  assert(n->verify_transmission_data());
 //  n->barrier(); //we make sure the peers wait for each other
-  return 0;
-}
+//  return 0;
+//}
 
 //Node *build_node(std::string trans_type, int node_id, int port, std::size_t total_data_size) {
 //  if (trans_type == "scif") {

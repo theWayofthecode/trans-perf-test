@@ -1,6 +1,8 @@
 set(SOURCE_FILES
         main.cpp
-        CmdArg.cpp)
+        CmdArg.cpp
+        common.cpp
+        ScifNode.cpp)
 
 set(LIBS scif trans4scif pthread zmq)
 

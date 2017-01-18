@@ -11,10 +11,20 @@
     Author: Aram Santogidis <aram.santogidis@cern.ch>
 */
 #include <system_error>
+#include <iostream>
 #include "common.h"
 
-void if_err_throw(int rc)
-{
+void if_serr_throw(int rc) {
   if (rc == -1)
     throw std::system_error(errno, std::system_category(), __FILE__LINE__);
+}
+
+void if_rerr_throw(bool err, std::string what) {
+  if (err)
+    throw std::runtime_error(what);
+}
+
+void log_msg(std::string msg) {
+  static std::string program_name(msg);
+  std::cerr << program_name << ": " << msg << std::endl;
 }

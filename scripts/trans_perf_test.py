@@ -68,34 +68,33 @@ if __name__ == "__main__":
     host_cmd_version = subprocess.check_output(["./tpt_host", "-v"], universal_newlines=True)
     mic_cmd_version = subprocess.check_output(["micnativeloadex", "tpt_mic", "-a", "-v"], universal_newlines=True)
 
-    trans_proto = "trans4scif"
-    process_timeout = 120 #in seconds
-    chunk_sizes = list(map(lambda x: 2**x, range(20, 26)))
-    #chunk_sizes = [1]
-    num_of_transfers = 1000
+    node_type = "scif"
+    experiment = "mem_unreg"
+    process_timeout = 20 #in seconds
+    chunk_sizes = list(map(lambda x: 2**x, range(12, 27)))
+    repetitions = 1000
     total_size_limit = 2**30
     #TODO: host-MIC vs send-recv
-    RTT = False
-    #TODO: use this variable in the following
     mic_to_host = True
     params = 'chunk_size: ' + str(chunk_sizes) +\
-        ' trans_proto: ' + trans_proto +\
-        ' num_of_transfers: ' + str(num_of_transfers) +\
+        ' trans_proto: ' + node_type +\
+        ' experiment: ' + experiment +\
+        ' repetitions: ' + str(repetitions) +\
         ' total_size_limit: ' + str(total_size_limit) +\
-        ' RTT: ' + str(RTT) +\
         ' mic_to_host: ' + str(mic_to_host) +\
         '\n' + host_cmd_version + '\n' +\
         mic_cmd_version + '\n'
 
-    sender_df = pd.DataFrame(index=range(0, num_of_transfers))
-    receiver_df = pd.DataFrame(index=range(0, num_of_transfers))
+    sender_df = pd.DataFrame(index=range(0, repetitions))
+    receiver_df = pd.DataFrame(index=range(0, repetitions))
 
-    logging.info(' ======= experiment parameters ======= \n'+\
-                 'process_timeout = %d\n' + params ,\
+    logging.info('======= experiment parameters ======= \n'+\
+                 'process_timeout = %d\n' + params +\
+                 '======================================================= \n',\
                  process_timeout)
 
     for chunk_size in chunk_sizes:
-        total_size = chunk_size * num_of_transfers
+        total_size = chunk_size * repetitions
         port = random.randint(2000, 6000)
 
         if total_size > total_size_limit:
@@ -103,28 +102,24 @@ if __name__ == "__main__":
 
         # Cook the commands
         receiver_cmd = ["./tpt_host", \
-                    "-t", trans_proto, \
+                    "-t", node_type, \
                     "-p", str(port), \
                     "-s", str(total_size), \
                     "-c", str(chunk_size), \
-                    "-u", str(num_of_transfers)]
-        if RTT :
-            receiver_cmd.extend(["-r", str(1)])
+                    "-u", str(repetitions), \
+                    "-e", experiment]
+
 
         sender_cmd = ["micnativeloadex", "tpt_mic", \
                    "-d", "0", \
                    "-a"]
-        sender_pars = "\' -n 0 -t " + trans_proto + \
+        sender_pars = "\' -n 0 -t " + node_type + \
                    " -p " + str(port) + \
                    " -s " + str(total_size) + \
                    " -c " + str(chunk_size) + \
-                   " -u " + str(num_of_transfers) + "\'"
+                   " -e " + experiment + \
+                   " -u " + str(repetitions) + "\'"
         sender_cmd.append(sender_pars)
-        # if RTT :
-        #     mic_pars += " -r 1 \'"
-        # else :
-        #     mic_pars += " \'"
-        # mic_cmd.append(mic_pars)
 
         logging.info(str(sender_cmd) + str(receiver_cmd) + '\n')
         
@@ -137,19 +132,18 @@ if __name__ == "__main__":
             break;
         else:
             sender_df[chunk_size] = pd.Series(mic_data, index=sender_df.index)
-            if not RTT:
-                receiver_df[chunk_size] = pd.Series(host_data, index=receiver_df.index)
+            receiver_df[chunk_size] = pd.Series(host_data, index=receiver_df.index)
+
 
 
 ### Storing permanently data ###
 
-    data_root = '../../data/'+os.uname().nodename+"/" +trans_proto+"/"
+    data_root = '../../data/'+os.uname().nodename+"/" + node_type + "/"
     TS = get_timestamp()
 
     # TODO: change host/mic to sender/receiver
     sender_df.to_csv(data_root+"sender_"+TS+".csv")
-    if not RTT:
-        receiver_df.to_csv(data_root+"receiver_"+TS+".csv")
+    receiver_df.to_csv(data_root+"receiver_"+TS+".csv")
 
     # TODO: file not found
     with open(data_root+"METADATA.txt", "a") as f:
