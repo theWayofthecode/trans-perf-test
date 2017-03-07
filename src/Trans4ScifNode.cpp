@@ -10,10 +10,15 @@
 
     Author: Aram Santogidis <aram.santogidis@cern.ch>
 */
-#include <iostream>
-#include "common.h"
 
-void log_msg(std::string msg) {
-  static std::string program_name(msg);
-  std::cerr << program_name << ": " << msg << std::endl;
+#include "Trans4ScifNode.h"
+
+Trans4ScifNode::Trans4ScifNode(CmdArg args) : Node<Trans4ScifNode>(args) {
+  int node_id = args.getNode_id();
+  int port = args.getPort();
+  if (node_id == -1) {
+    sock.reset(t4s::listeningSocket(port));
+  } else {
+    sock.reset(t4s::connectingSocket(node_id, port));
+  }
 }

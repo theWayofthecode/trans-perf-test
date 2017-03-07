@@ -19,6 +19,7 @@
 class CmdArg {
  private:
   int node_id_ = -1;
+  std::string hostname_;
   int port_ = -1;
   int reps_ = 0;
   std::string experiment_;
@@ -32,6 +33,10 @@ class CmdArg {
 
   int getNode_id() const {
     return node_id_;
+  }
+
+  std::string getHostname() const {
+    return hostname_;
   }
 
   int getPort() const {
@@ -50,7 +55,7 @@ class CmdArg {
     return chunk_size_;
   }
 
-  const std::size_t &getTotal_data_size() const {
+  std::size_t getTotal_data_size() const {
     return total_data_size_;
   }
 

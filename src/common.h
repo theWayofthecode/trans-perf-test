@@ -23,15 +23,10 @@
 #define __FILE__LINE__ (__FILE__ + std::string(":") + INT_TO_STR(__LINE__))
 
 // Used to fill the transmission data arrays
-constexpr uint8_t fill_value = 0xAB;
 constexpr std::size_t PAGE_SIZE = 0x1000;
-
-void if_serr_throw(int rc);
-void if_rerr_throw(bool err, std::string what);
 
 using namespace std::chrono;
 
 constexpr microseconds inval_dur = duration_values<microseconds>::max();
-
 void log_msg(std::string msg);
 #endif //TRANS_PERF_TEST_COMMON_H

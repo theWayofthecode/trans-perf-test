@@ -16,7 +16,7 @@
 #include "CmdArg.h"
 
 CmdArg::CmdArg(int argc, char **argv) {
-  std::string options("t:n:p:s:c:u:e:v");
+  std::string options("t:n:h:p:s:c:u:e:v");
   int c;
   opterr = 0;
   while ((c = getopt(argc, argv, options.c_str())) != -1) {
@@ -25,8 +25,10 @@ CmdArg::CmdArg(int argc, char **argv) {
         node_type_ = optarg;
         break;
       case 'n':
-        //TODO: std::to_string ?
         node_id_ = std::stoi(optarg);
+        break;
+      case 'h':
+        hostname_ = std::string(optarg);
         break;
       case 'p':
         port_ = std::stoi(optarg);
