@@ -24,6 +24,7 @@
 
 // Used to fill the transmission data arrays
 constexpr std::size_t PAGE_SIZE = 0x1000;
+constexpr std::size_t CL_SIZE = 0x40;
 
 using namespace std::chrono;
 

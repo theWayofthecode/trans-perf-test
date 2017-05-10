@@ -14,11 +14,10 @@
 #include "Trans4ScifNode.h"
 
 Trans4ScifNode::Trans4ScifNode(CmdArg args) : Node<Trans4ScifNode>(args) {
-  int node_id = args.getNode_id();
-  int port = args.getPort();
-  if (node_id == -1) {
-    sock.reset(t4s::listeningSocket(port));
+  uint16_t node_id = args.getNode_id();
+  if (node_id == static_cast<uint16_t>(-1)) {
+    sock.reset(new t4s::Socket(args.getPort()));
   } else {
-    sock.reset(t4s::connectingSocket(node_id, port));
+    sock.reset(new t4s::Socket(node_id, args.getPort()));
   }
 }

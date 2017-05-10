@@ -51,7 +51,7 @@ void ScifNode::connect(int node_id, int port) {
 }
 
 void ScifNode::listen(int port) {
-  ScifEpd l;
+  t4s::ScifEpd l;
 
   if (-1 == scif_bind(l.get(), port))
     throw std::system_error(errno, std::system_category(), __FILE__LINE__);
@@ -65,7 +65,7 @@ void ScifNode::listen(int port) {
   struct scif_portID peer_addr;
   if (-1 == scif_accept(l.get(), &peer_addr, &acc_epd, SCIF_ACCEPT_SYNC))
     throw std::system_error(errno, std::system_category(), __FILE__LINE__);
-  epd_ = ScifEpd(acc_epd);
+  epd_ = t4s::ScifEpd(acc_epd);
 }
 
 void ScifNode::alloc_init_data(std::size_t total_data_size) {

@@ -28,7 +28,7 @@ class Trans4ScifNode : public Node<Trans4ScifNode> {
  public:
   Trans4ScifNode(CmdArg args);
   std::size_t send(uint8_t *data, std::size_t sz) { return sock->send(data, sz); }
-  std::size_t recv(uint8_t *data, std::size_t sz) { sock->waitIn(10000); return sock->recv(data, sz); }
+  std::size_t recv(uint8_t *data, std::size_t sz) { return sock->recv(data, sz); }
   microseconds mem_reg(std::size_t sz) { return inval_dur; }
   microseconds mem_unreg() { return inval_dur; }
 };

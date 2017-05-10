@@ -16,10 +16,12 @@
 
 #include <chrono>
 #include <ctime>
+#include <thread>
 #include <stdexcept>
 #include <functional>
 #include <iostream>
 #include <algorithm>
+#include <cassert>
 #include "common.h"
 #include "CmdArg.h"
 
@@ -64,38 +66,78 @@ class Node {
   }
 
   void send_thr() {
-    static uint8_t *dp = data_.get();
-    std::size_t bytes_sent = 0;
+    uint8_t *dp = data_.get();
     auto start = high_resolution_clock::now();
-
-    while (bytes_sent < chunk_size_) {
-      auto b = this_->send(dp, chunk_size_ - bytes_sent);
-      bytes_sent += b;
-      dp += b;
-      if (dp >= data_end_)
-        dp = data_.get();
+    while (dp < data_end_) {
+      std::size_t bytes_sent = 0;
+      while (bytes_sent < chunk_size_) {
+        auto b = this_->send(dp, chunk_size_ - bytes_sent);
+        bytes_sent += b;
+        dp += b;
+//        std::cerr << b << " ";
+      }
     }
     auto end = high_resolution_clock::now();
+
     std::cout << (duration_cast<microseconds>(end - start)).count() << " ";
   }
 
   void recv_thr() {
-    static uint8_t *dp = data_.get();
-    static int i = 0;
-
-    std::size_t bytes_recv = 0;
+    uint8_t *dp = data_.get();
     auto start = high_resolution_clock::now();
+    while (dp < data_end_) {
+      std::size_t bytes_recv = 0;
+      while (bytes_recv < chunk_size_) {
+        auto b = this_->recv(dp, chunk_size_ - bytes_recv);
+        bytes_recv += b;
+        dp += b;
+//        std::cerr << b << " ";
+      }
+    }
+    auto end = high_resolution_clock::now();
+
+    std::cout << (duration_cast<microseconds>(end - start)).count() << " ";
+  }
+
+  void send_recv_lat() {
+    static uint8_t *dp = data_.get();
+    std::this_thread::sleep_for(seconds(1));
+    auto start = high_resolution_clock::now();
+    std::size_t bytes_sent = 0;
+    while (bytes_sent < chunk_size_) {
+      auto b = this_->send(dp, chunk_size_ - bytes_sent);
+      bytes_sent += b;
+      dp += b;
+    }
+    std::size_t bytes_recv = 0;
     while (bytes_recv < chunk_size_) {
       auto b = this_->recv(dp, chunk_size_ - bytes_recv);
       bytes_recv += b;
       dp += b;
-      if (dp >= data_end_)
-        dp = data_.get();
     }
     auto end = high_resolution_clock::now();
     std::cout << (duration_cast<microseconds>(end - start)).count() << " ";
   }
-  
+
+  void recv_send_lat() {
+    static uint8_t *dp = data_.get();
+    auto start = high_resolution_clock::now();
+    std::size_t bytes_recv = 0;
+    while (bytes_recv < chunk_size_) {
+      auto b = this_->recv(dp, chunk_size_ - bytes_recv);
+      bytes_recv += b;
+      dp += b;
+    }
+    std::size_t bytes_sent = 0;
+    while (bytes_sent < chunk_size_) {
+      auto b = this_->send(dp, chunk_size_ - bytes_sent);
+      bytes_sent += b;
+      dp += b;
+    }
+    auto end = high_resolution_clock::now();
+    std::cout << (duration_cast<microseconds>(end - start)).count() << " ";
+  }
+
  //////////////////////////////////////////////////////////////////////////
  public:
   std::function<void()> experiment;
@@ -114,6 +156,12 @@ class Node {
       experiment = std::bind(&Node::mem_onlyreg, this);
     } else if (ex_type_ == "mem_unreg") {
       experiment = std::bind(&Node::mem_unreg, this);
+    } else if (ex_type_ == "send_recv_lat") {
+      experiment = std::bind(&Node::send_recv_lat, this);
+      std::fill(data_.get(), data_end_, fill_value);
+    } else if (ex_type_ == "recv_send_lat") {
+      experiment = std::bind(&Node::recv_send_lat, this);
+      std::fill(data_.get(), data_end_, fill_value);
     } else if (ex_type_ == "send_thr") {
       experiment = std::bind(&Node::send_thr, this);
       std::fill(data_.get(), data_end_, fill_value);
@@ -145,18 +193,8 @@ class Node {
   void barrier() {
     static uint8_t sval = 0xbb;
     uint8_t rval = 0;
-    int rc = 0;
-    do {
-      rc = this_->send(&sval, 1);
-      if (rc == -1)
-        throw std::runtime_error("Node: barrier(): send() error.");
-    } while (1 != rc);
-    do {
-      rc = this_->recv(&rval, 1);
-      if (rc == -1)
-        throw std::runtime_error("Node: barrier(): recv() error.");
-    } while (1 != rc);
-
+    while (1 != this_->send(&sval, 1));
+    while (1 != this_->recv(&rval, 1));
     if (sval != rval)
       throw std::runtime_error("Node: barrier(): sval != rval.");
   }

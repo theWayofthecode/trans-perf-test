@@ -2,8 +2,8 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="ff1cc4a9-9753-4f61-ad37-3637aba5d60e" name="cernafs" url="http://localhost">
-        <fileTransfer port="0" mountedRoot="Z:\codein\trans-perf-test" accessType="MOUNT" />
+      <webServer id="c46a40d2-7ae4-4942-8694-f416250fbba7" name="local" url="http://localhost">
+        <fileTransfer port="0" mountedRoot="$USER_HOME$/backup/trans-perf-test" accessType="MOUNT" />
       </webServer>
     </option>
   </component>

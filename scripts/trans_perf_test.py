@@ -7,7 +7,7 @@ import random
 import logging
 from threading import Thread
 
-process_timeout = 1800 #in seconds
+process_timeout = 36000 #in seconds
 
 def run_peer(cmd, df, chunk_size):
     with open(cmd[0]+".err", "a") as ferr:
@@ -34,19 +34,24 @@ if __name__ == "__main__":
 #####Experiment parameters
     host_cmd_version = subprocess.check_output(["./tpt_host", "-v"], universal_newlines=True)
     mic_cmd_version = subprocess.check_output(["micnativeloadex", "tpt_mic", "-a", "-v"], universal_newlines=True)
-    node_type = "scif"
+    node_type = "trans4scif"
+    tcp_hostname = ""
+    tcp_listen = ""
     host_e = "recv_thr"
     mic_e = "send_thr"
-    chunk_sizes = list(map(lambda x: 2**x, range(12, 27)))
-    chunk_sizes = [128, 256]
-    repetitions = 5
-    total_size_limit = 2**30
+    chunk_sizes = list(map(lambda x: 2**x, range(12, 29)))
+    buf_sizes = list(map(lambda x: 2**x, range(19, 28, 2)))
+    #chunk_sizes = [2**6]
+    repetitions = 10
+    total_size = 2**30
     params = 'chunk_size: ' + str(chunk_sizes) +\
         ' trans_proto: ' + node_type +\
+        ' tcp_hostname: ' + tcp_hostname +\
         ' host_e: ' + host_e +\
         ' mic_e: ' + mic_e +\
         ' repetitions: ' + str(repetitions) +\
-        ' total_size_limit: ' + str(total_size_limit) +\
+        ' total_size: ' + str(total_size) +\
+        ' buf_sizes: ' + str(buf_sizes) +\
         '\n' + host_cmd_version + mic_cmd_version
 
     mic_df = pd.DataFrame(index=range(0, repetitions))
@@ -58,49 +63,50 @@ if __name__ == "__main__":
                  process_timeout)
 
 #####Run experiments
-    for chunk_size in chunk_sizes:
-        total_size = chunk_size * repetitions
-        port = random.randint(2000, 6000)
-        if total_size > total_size_limit:
-            total_size = total_size_limit
+    for buf_size in buf_sizes:
+        for chunk_size in chunk_sizes:
+            port = random.randint(2000, 6000)
 
-        host_cmd = ["./tpt_host", \
-                    "-t", node_type, \
-                    "-p", str(port), \
-                    "-s", str(total_size), \
-                    "-c", str(chunk_size), \
-                    "-u", str(repetitions), \
-                    "-e", host_e]
-        mic_cmd = ["micnativeloadex", "tpt_mic", \
-                   "-d", "0", \
-                   "-a"]
-        mic_params = "\' -n 0 -t " + node_type + \
-                   " -p " + str(port) + \
-                   " -s " + str(total_size) + \
-                   " -c " + str(chunk_size) + \
-                   " -e " + mic_e + \
-                   " -u " + str(repetitions) + "\'"
-        mic_cmd.append(mic_params)
-        # logging.info(str(host_cmd) + str(mic_cmd) + '\n')
+            host_cmd = ["./tpt_host", \
+                        "-t", node_type, \
+                        "-p", str(port), \
+                        "-s", str(total_size), \
+                        "-b", str(buf_size), \
+                        "-c", str(chunk_size), \
+                        "-u", str(repetitions), \
+                        "-e", host_e]
+            mic_cmd = ["micnativeloadex", "tpt_mic", \
+                       "-d", "0", \
+                       "-a"]
+            mic_params = "\' -n 0 -t " + node_type + \
+                       " -p " + str(port) + \
+                       " -s " + str(total_size) + \
+                       " -b " + str(buf_size) + \
+                       " -c " + str(chunk_size) + \
+                       " -e " + mic_e + \
+                       " -u " + str(repetitions) + "\'"
+            mic_cmd.append(mic_params)
+            # logging.info(str(host_cmd) + str(mic_cmd) + '\n')
 
-        host_t = Thread(target=run_peer, args=(host_cmd, host_df, chunk_size, ))
-        mic_t = Thread(target=run_peer, args=(mic_cmd, mic_df, chunk_size, ))
-        host_t.start()
-        mic_t.start()
-        host_t.join()
-        mic_t.join()
+            host_t = Thread(target=run_peer, args=(host_cmd, host_df, chunk_size, ))
+            mic_t = Thread(target=run_peer, args=(mic_cmd, mic_df, chunk_size, ))
+            host_t.start()
+            mic_t.start()
+            host_t.join()
+            mic_t.join()
 
 ######Storing data permanently
-    data_root = '../../data/'+os.uname().nodename+"/" + node_type + "/"
-    if not os.path.exists(data_root):
-        os.makedirs(data_root)
-    TS = get_timestamp()
-    mic_df.to_csv(data_root + "mic_" + TS + ".csv")
-    host_df.to_csv(data_root + "host_" + TS + ".csv")
+        data_root = '../../data/'+os.uname().nodename+"/" + node_type + "/"
+        if not os.path.exists(data_root):
+            os.makedirs(data_root)
+        TS = get_timestamp()
+        mic_df.to_csv(data_root + "mic_" + TS + ".csv")
+        host_df.to_csv(data_root + "host_" + TS + ".csv")
 
-    with open(data_root+"METADATA.txt", "a") as f:
-        f.write("\n################################\n")
-        f.write(TS)
-        f.write('tpt_host -v ' + host_cmd_version + '\n')
-        f.write('tpt_mic -v ' + mic_cmd_version + '\n')
-        f.write(params)
+        with open(data_root+"METADATA.txt", "a") as f:
+            f.write("\n################################\n")
+            f.write('\"Exacomm paper results buf size change \"\n')
+            f.write(TS+"\n")
+            f.write('tpt_host -v ' + host_cmd_version + '\n')
+            f.write('tpt_mic -v ' + mic_cmd_version + '\n')
+            f.write(params)

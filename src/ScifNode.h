@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <queue>
 #include "Node.h"
-#include "scifepd.h"
+#include <scifepd.h>
 #include "CmdArg.h"
 
 class ScifNode : public Node<ScifNode> {
@@ -31,7 +31,7 @@ class ScifNode : public Node<ScifNode> {
   };
 
   //The data_ can be transmitted multiple times
-  ScifEpd epd_;
+  t4s::ScifEpd epd_;
   std::unique_ptr<uint8_t> mem_;
   uint8_t *mem_end_ = nullptr;
   std::size_t total_size_;

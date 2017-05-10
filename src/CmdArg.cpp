@@ -13,10 +13,11 @@
 
 #include <unistd.h>
 #include <stdexcept>
+#include <cassert>
 #include "CmdArg.h"
 
 CmdArg::CmdArg(int argc, char **argv) {
-  std::string options("t:n:h:p:s:c:u:e:v");
+  std::string options("t:n:h:p:s:b:c:u:e:v");
   int c;
   opterr = 0;
   while ((c = getopt(argc, argv, options.c_str())) != -1) {
@@ -35,9 +36,15 @@ CmdArg::CmdArg(int argc, char **argv) {
         break;
       case 's':
         total_data_size_ = static_cast<std::size_t> (std::stoi(optarg));
+        assert(total_data_size_ > 0);
+        break;
+      case 'b':
+        buf_size_ = static_cast<std::size_t> (std::stoi(optarg));
+        assert(buf_size_ > 0);
         break;
       case 'c':
         chunk_size_ = static_cast<std::size_t> (std::stoi(optarg));
+        assert(chunk_size_ > 0);
         break;
       case 'u':
         reps_ = std::stoi(optarg);

@@ -18,29 +18,30 @@
 
 class CmdArg {
  private:
-  int node_id_ = -1;
+  uint16_t node_id_ = -1;
+  uint16_t port_ = -1;
   std::string hostname_;
-  int port_ = -1;
   int reps_ = 0;
   std::string experiment_;
   std::size_t chunk_size_ = 0;
   std::size_t total_data_size_ = 0;
+  std::size_t buf_size_ = 16777280;
   std::string node_type_;
   bool version_ = false;
 
  public:
   CmdArg(int argc, char **argv);
 
-  int getNode_id() const {
+  uint16_t getNode_id() const {
     return node_id_;
+  }
+
+  uint16_t getPort() const {
+    return port_;
   }
 
   std::string getHostname() const {
     return hostname_;
-  }
-
-  int getPort() const {
-    return port_;
   }
 
   int getReps() const {
@@ -57,6 +58,10 @@ class CmdArg {
 
   std::size_t getTotal_data_size() const {
     return total_data_size_;
+  }
+
+  std::size_t getBuf_size() const {
+    return buf_size_;
   }
 
   bool getVersion() const {

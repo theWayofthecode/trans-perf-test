@@ -4,10 +4,10 @@ set(SOURCE_FILES
         common.cpp
         ScifNode.cpp
         Trans4ScifNode.cpp
-        ZeroMQNode.cpp
+#        ZeroMQNode.cpp
         )
 
-set(LIBS scif trans4scif pthread zmq)
+set(LIBS scif trans4scif pthread)
 
 include_directories("/usr/local/include")
 link_directories("/usr/local/lib64")

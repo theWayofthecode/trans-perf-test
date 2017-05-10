@@ -20,13 +20,13 @@
 #include <stdexcept>
 #include <system_error>
 #include <cstdlib>
-#include <errno.h>
+#include <cerrno>
 #include <trans4scif.h>
 #include "CmdArg.h"
 #include "Node.h"
 #include "ScifNode.h"
 #include "Trans4ScifNode.h"
-#include "ZeroMQNode.h"
+//#include "ZeroMQNode.h"
 #include "common.h"
 
 
@@ -47,7 +47,7 @@ void run(NodeType &n, int reps) {
   if (n.data_is_valid())
     log_msg("Data is valid.");
   else
-    log_msg("Data is invalid.");
+    throw std::invalid_argument("Data is invalid.");
 
   n.barrier();
 }
@@ -55,7 +55,6 @@ void run(NodeType &n, int reps) {
 int main(int argc, char **argv) {
   log_msg(argv[0]);
   try {
-
     // Parse the command line arguments
     CmdArg args(argc, argv);
     if (args.getVersion()) {
@@ -64,23 +63,32 @@ int main(int argc, char **argv) {
       std::cout << t4s::trans4scif_config() << std::endl;
       return 0;
     }
-
+    assert(!(args.getTotal_data_size() % args.getChunk_size()));
     //Build the node and run the experiment
     auto node_type = args.getNode_type();
-    if (node_type == "scif") {
-      ScifNode node(args);
-      run<ScifNode>(node, args.getReps());
-    } else if (node_type == "trans4scif") {
-      Trans4ScifNode node(args);
-      run<Trans4ScifNode>(node, args.getReps());
-    } else if (node_type == "zeromq") {
-      ZeroMQNode node(args);
-      run<ZeroMQNode>(node, args.getReps());
-    }  else {
-      std::cerr << "Unsupported Node type: " << node_type << std::endl;
-      return EXIT_FAILURE;
+    for (int i = 0; ; ++i) {
+      try {
+        if (node_type == "scif") {
+          ScifNode node(args);
+          run<ScifNode>(node, args.getReps());
+        } else if (node_type == "trans4scif") {
+          Trans4ScifNode node(args);
+          run<Trans4ScifNode>(node, args.getReps());
+//        } else if (node_type == "zeromq") {
+//          ZeroMQNode node(args);
+//          run<ZeroMQNode>(node, args.getReps());
+        } else {
+          std::cerr << "Unsupported Node type: " << node_type << std::endl;
+          return EXIT_FAILURE;
+        }
+        break;
+      // If the listener is not ready, retry few times.
+      } catch (std::system_error &se) {
+        if (se.code().value() != ECONNREFUSED || i == 10)
+          throw;
+        std::this_thread::sleep_for(milliseconds(500));
+      }
     }
-
   } catch (std::exception &e) {
     std::cerr << "Exception: " << e.what() << std::endl;
     return EXIT_FAILURE;
